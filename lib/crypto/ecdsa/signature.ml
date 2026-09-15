@@ -7,9 +7,11 @@ let n = Scalar.modulus
 type t = { r : Z.t; s : Z.t }
 
 let make r s =
-  if Z.equal r Z.zero         then Error Common.Der_error.Bad_length   (* zero r *)
+  if Z.compare r Z.zero < 0   then Error Common.Der_error.R_out_of_range
+  else if Z.equal r Z.zero    then Error Common.Der_error.Bad_length
   else if Z.compare r n >= 0  then Error Common.Der_error.R_out_of_range
-  else if Z.equal s Z.zero    then Error Common.Der_error.Bad_length   (* zero s *)
+  else if Z.compare s Z.zero < 0   then Error Common.Der_error.S_out_of_range
+  else if Z.equal s Z.zero    then Error Common.Der_error.Bad_length
   else if Z.compare s n >= 0  then Error Common.Der_error.S_out_of_range
   else Ok { r; s }
 
