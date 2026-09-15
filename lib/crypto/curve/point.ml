@@ -95,19 +95,29 @@ let sqrt_mod_p a =
   let r = Field.pow a exp in
   if Field.equal (Field.mul r r) a then Some r else None
 
+let field_of_hex_coordinate context s =
+  try
+    let z = Z.of_string ("0x" ^ s) in
+    if Z.compare z Field.modulus >= 0 then
+      Error (Common.Parse_error.Non_canonical context)
+    else
+      Ok (Field.of_z z)
+  with _ ->
+    Error (Common.Parse_error.Bad_hex context)
+
 let of_uncompressed s =
   if String.length s <> 130 then
     Error (Common.Parse_error.Bad_length "point: uncompressed")
   else if String.sub s 0 2 <> "04" then
     Error (Common.Parse_error.Bad_prefix "point: uncompressed")
   else
-    match Field.of_hex (String.sub s 2 64),
-          Field.of_hex (String.sub s 66 64) with
+    match field_of_hex_coordinate "point: uncompressed" (String.sub s 2 64),
+          field_of_hex_coordinate "point: uncompressed" (String.sub s 66 64) with
     | Ok x, Ok y ->
       let p = Point { x; y } in
       if is_on_curve p then Ok p
       else Error (Common.Parse_error.Not_on_curve "point: uncompressed")
-    | _ -> Error (Common.Parse_error.Bad_hex "point: uncompressed")
+    | Error e, _ | _, Error e -> Error e
 
 let of_compressed s =
   if String.length s <> 66 then
@@ -117,8 +127,8 @@ let of_compressed s =
     if prefix <> "02" && prefix <> "03" then
       Error (Common.Parse_error.Bad_prefix "point: compressed")
     else
-      match Field.of_hex (String.sub s 2 64) with
-      | Error _ -> Error (Common.Parse_error.Bad_hex "point: compressed")
+      match field_of_hex_coordinate "point: compressed" (String.sub s 2 64) with
+      | Error e -> Error e
       | Ok x ->
         let alpha = Field.add (Field.mul x (Field.mul x x)) b in
         (match sqrt_mod_p alpha with
