@@ -1,0 +1,3 @@
+(executable
+ (name test_point)
+ (libraries curve zarith alcotest))
