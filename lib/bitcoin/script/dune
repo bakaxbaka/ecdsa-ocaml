@@ -1,4 +1,4 @@
 (library
  (name script_types)
  (wrapped false)
- (libraries common))
+ (libraries common encoding))
