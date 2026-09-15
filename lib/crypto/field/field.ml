@@ -13,6 +13,10 @@ module T = struct
   let zero = Z.zero
   let one  = Z.one
   
+  (* Check if a raw integer is in the canonical field range [0, p-1] *)
+  let is_canonical z =
+    Z.compare z Z.zero >= 0 && Z.compare z modulus < 0
+  
   let add x y = of_z Z.(x + y)
   let sub x y = of_z Z.(x - y)
   let mul x y = of_z Z.(x * y)

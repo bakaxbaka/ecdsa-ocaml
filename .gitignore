@@ -1,19 +1,53 @@
-# --- ltm-power ---
-ltm/store/*.jsonl
-ltm/runtime/*
-ltm/reports/*
-ltm/snapshots/*
-# --- /ltm-power ---
-@"
+```
+# Compiled and build artifacts
+*.cmi
+*.cmo
+*.cmx
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.out
+*.obj
+
+# OCaml specific
+_dune/
 _build/
-*.install
-*.merlin
-.env
-.env.*
+*.run
+*.native
+*.byte
+
+# Dependencies
+.opam/
+esy.lock/
+node_modules/
+venv/
+.venv/
+
+# Logs and temp files
 *.log
+*.tmp
+*.swp
+*.swo
+
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# OS generated files
 .DS_Store
-"@ | Set-Content -Path "D:\ecdsa-ocaml\.gitignore" -Encoding utf8
+Thumbs.db
+```

@@ -60,7 +60,8 @@ let is_public_key instr =
     (len = 65 && opcode = 0x41)
   | _ -> false
 
-(* Extract signatures from parsed script instructions *)
+(* Extract signatures from parsed script instructions.
+   Try to parse each push data item as DER, collecting all valid signatures. *)
 let extract_signatures (script : Script.t) =
   let rec loop acc instrs =
     match instrs with
