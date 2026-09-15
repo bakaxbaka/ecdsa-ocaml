@@ -49,19 +49,6 @@ let error_to_string = function
 
 (* ------------------------------------------------------------------ helpers *)
 
-(* Check if an instruction is a DER-encoded signature.
-   Accept any valid push data that could be a DER signature (typically 70-73 bytes).
-   We check for OP_PUSHDATA opcodes and reasonable lengths rather than hardcoding. *)
-let is_der_signature instr =
-  match instr with
-  | Script.Push_data { opcode; data } ->
-    (* DER signatures have a minimum length and reasonable maximum.
-       The opcode indicates the push length. Accept all standard push opcodes. *)
-    let len = Bytes.length data in
-    (* Valid DER signatures are at least ~8 bytes and at most ~73 bytes plus sighash *)
-    len >= 8 && len <= 74 && opcode >= 0x01 && opcode <= 0x4b
-  | _ -> false
-
 (* Check if an instruction is a public key push *)
 let is_public_key instr =
   match instr with
@@ -82,10 +69,9 @@ let extract_signatures (script : Script.t) =
     | i :: rest ->
       match i with
       | Script.Push_data { data; _ } ->
-        (* Try to parse any push data as DER signature *)
         (match Der.of_bytes data with
-         | Ok parsed -> loop (parsed :: acc) rest
-         | Error _   -> loop acc rest)
+        | Ok parsed -> loop (parsed :: acc) rest
+        | Error _   -> loop acc rest)
       | _ -> loop acc rest
   in
   loop [] script
@@ -118,17 +104,15 @@ let extract_legacy (input_index : int) (script_sig : bytes) : (t, error) result 
 
 (* ------------------------------------------------------------------ SegWit input *)
 
-(* For SegWit inputs, signatures are in the witness stack.
-   Scan ALL witness items for valid DER signatures instead of stopping at the first non-signature. *)
+(* Scan every witness item: multisig stacks can contain non-signature items
+   before, between, or after DER signatures. *)
 let extract_witness_sigs witnesses =
-  let rec loop acc stack =
-    match stack with
+  let rec loop acc = function
     | [] -> List.rev acc
-    | w :: rest ->
-      (* Try to parse each witness item as DER signature *)
-      (match Der.of_bytes w with
-       | Ok parsed -> loop (parsed :: acc) rest
-       | Error _   -> loop acc rest)
+    | witness :: rest ->
+      match Der.of_bytes witness with
+      | Ok parsed -> loop (parsed :: acc) rest
+      | Error _ -> loop acc rest
   in
   loop [] witnesses
 

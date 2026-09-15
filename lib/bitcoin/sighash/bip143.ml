@@ -121,22 +121,17 @@ let compute (tx : transaction) input_index script_code value sighash_type =
       (* ---- Step 2: hashPrevouts ----------------------------------------- *)
       let hash_prevouts =
         if anyonecanpay then
-          (* BIP143: hashPrevouts is 32 zero bytes when ANYONECANPAY is set *)
           Bytes.make 32 '\x00'
         else
-          let prevouts = List.map ser_prevout tx.inputs in
-          Hash.hash256 (Bytes_util.concat prevouts)
+          Hash.hash256 (Bytes_util.concat (List.map ser_prevout tx.inputs))
       in
 
       (* ---- Step 3: hashSequence ----------------------------------------- *)
       let hash_sequence =
         if anyonecanpay || base_type = sighash_none || base_type = sighash_single then
-          (* BIP143: hashSequence is 32 zero bytes when ANYONECANPAY is set
-             or when the base type is SIGHASH_NONE or SIGHASH_SINGLE *)
           Bytes.make 32 '\x00'
         else
-          let sequences = List.map ser_sequence tx.inputs in
-          Hash.hash256 (Bytes_util.concat sequences)
+          Hash.hash256 (Bytes_util.concat (List.map ser_sequence tx.inputs))
       in
 
       (* ---- Step 4: outpoint --------------------------------------------- *)
@@ -149,14 +144,7 @@ let compute (tx : transaction) input_index script_code value sighash_type =
       let value_le = u64_le value in
 
       (* ---- Step 7: nSequence -------------------------------------------- *)
-      let sequence =
-        if anyonecanpay then
-          signed_input.sequence
-        else
-          (* For non-ANYONECANPAY, all sequences are included as-is *)
-          signed_input.sequence
-      in
-      let sequence_le = u32_le sequence in
+      let sequence_le = u32_le signed_input.sequence in
 
       (* ---- Step 8: hashOutputs ------------------------------------------ *)
       let hash_outputs =
