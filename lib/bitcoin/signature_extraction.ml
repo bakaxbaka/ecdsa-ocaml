@@ -49,15 +49,17 @@ let error_to_string = function
 
 (* ------------------------------------------------------------------ helpers *)
 
-(* Check if an instruction is a DER-encoded signature *)
+(* Check if an instruction is a DER-encoded signature.
+   Accept any valid push data that could be a DER signature (typically 70-73 bytes).
+   We check for OP_PUSHDATA opcodes and reasonable lengths rather than hardcoding. *)
 let is_der_signature instr =
   match instr with
   | Script.Push_data { opcode; data } ->
-    (* DER signatures are typically 71, 72, or 73 bytes with opcodes 0x47, 0x48, 0x49 *)
+    (* DER signatures have a minimum length and reasonable maximum.
+       The opcode indicates the push length. Accept all standard push opcodes. *)
     let len = Bytes.length data in
-    (len = 71 && opcode = 0x47) ||
-    (len = 72 && opcode = 0x48) ||
-    (len = 73 && opcode = 0x49)
+    (* Valid DER signatures are at least ~8 bytes and at most ~73 bytes plus sighash *)
+    len >= 8 && len <= 74 && opcode >= 0x01 && opcode <= 0x4b
   | _ -> false
 
 (* Check if an instruction is a public key push *)
@@ -71,19 +73,20 @@ let is_public_key instr =
     (len = 65 && opcode = 0x41)
   | _ -> false
 
-(* Extract signatures from parsed script instructions *)
+(* Extract signatures from parsed script instructions.
+   Try to parse each push data item as DER, collecting all valid signatures. *)
 let extract_signatures (script : Script.t) =
   let rec loop acc instrs =
     match instrs with
     | [] -> List.rev acc
     | i :: rest ->
-      if is_der_signature i then
-        let data = Script.data_of i in
-        match Der.of_bytes data with
-        | Ok parsed -> loop (parsed :: acc) rest
-        | Error e   -> loop acc rest  (* Skip invalid DER, let caller handle *)
-      else
-        loop acc rest
+      match i with
+      | Script.Push_data { data; _ } ->
+        (* Try to parse any push data as DER signature *)
+        (match Der.of_bytes data with
+         | Ok parsed -> loop (parsed :: acc) rest
+         | Error _   -> loop acc rest)
+      | _ -> loop acc rest
   in
   loop [] script
 
@@ -115,6 +118,20 @@ let extract_legacy (input_index : int) (script_sig : bytes) : (t, error) result 
 
 (* ------------------------------------------------------------------ SegWit input *)
 
+(* For SegWit inputs, signatures are in the witness stack.
+   Scan ALL witness items for valid DER signatures instead of stopping at the first non-signature. *)
+let extract_witness_sigs witnesses =
+  let rec loop acc stack =
+    match stack with
+    | [] -> List.rev acc
+    | w :: rest ->
+      (* Try to parse each witness item as DER signature *)
+      (match Der.of_bytes w with
+       | Ok parsed -> loop (parsed :: acc) rest
+       | Error _   -> loop acc rest)
+  in
+  loop [] witnesses
+
 (* For SegWit inputs, signatures are in the witness stack *)
 let extract_segwit
     (input_index : int)
@@ -128,17 +145,7 @@ let extract_segwit
        For P2WPKH: [signature, public_key]
        For P2WSH: [witness script, ..., final_witness] *)
 
-    (* Extract signatures from witness stack *)
-    let rec extract_witness_sigs acc witnesses =
-      match witnesses with
-      | [] -> List.rev acc
-      | w :: rest ->
-        match Der.of_bytes w with
-        | Ok parsed -> extract_witness_sigs (parsed :: acc) rest
-        | Error _   -> List.rev acc  (* Non-signature item *)
-    in
-
-    let signatures = extract_witness_sigs [] witness_stack in
+    let signatures = extract_witness_sigs witness_stack in
     if signatures = [] then
       Error No_signature
     else begin
