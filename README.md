@@ -17,42 +17,48 @@
 
   Honest. Not aspirational.
 
-    Layer                                State
-    ---------------------------------    --------------------------------------
-    common/   error families             builds clean
-    crypto/   field, scalar, curve       mid-refactor into curve/ sub-library
-    bitcoin/  tx, sighash, addresses     not started (skeleton only)
-    analysis/ nonce detection, recovery  not started
-    storage/  persistence                not started
-    application/ pipeline, CLI           not started
+    Layer                                State         Tests
+    ---------------------------------    -----------   -------
+    common/   error families             builds clean     -
+    crypto/   field, scalar, curve       complete           -
+    crypto/   secp256k1 arithmetic       complete           -
+    crypto/   ECDSA signature types      complete         18
+    crypto/   ECDSA verification         complete         18
+    crypto/   strict DER parser          complete         22
+    crypto/   SHA-256 / hash256          complete         15
+    bitcoin/  transaction parser         complete         24
+    bitcoin/  script types               complete         24
+    bitcoin/  script parser              complete         25
+    bitcoin/  legacy SIGHASH             complete         19
+    bitcoin/  BIP143 (SegWit) SIGHASH    complete         15
+    bitcoin/  signature extraction       complete         13
+    analysis/ nonce detection            skeleton           -
+    storage/  persistence                skeleton           -
+    application/ pipeline, CLI           skeleton           -
 
-    Tests                                none yet
     CI                                   none yet
     CLI                                  none yet
-    git history                          none yet
-
-  The next deliverable is test/unit/crypto_curve/test_curve.ml -- eleven
-  test cases proving the curve arithmetic is correct.
+    git history                          minimal
 
 ================================================================================
-                                 WHY
+                                BUILD
 ================================================================================
 
-  The Python prototype recovered private keys by finding repeated ECDSA
-  nonces in Bitcoin transactions. It worked. It also:
+  Requires opam, OCaml 4.14 or later, and Dune.
 
-    - Represented r, s, z, k, d as bare Python int, so nothing prevented
-      adding a curve coordinate to a scalar.
-    - Used `except: return None` at every fallible point, so failures were
-      indistinguishable from "no result".
-    - Reported `confidence = 1.0` when six algebraically equivalent
-      formulas agreed -- which proves nothing, because they always agree
-      if the input is valid.
-    - Skipped SegWit inputs entirely (`if script_len == 0: continue`).
-    - Verified recovery by string-comparing derived public keys, not by
-      checking `address(d) == input_address`.
+  Install dependencies:
 
-  This project fixes all five.
+    opam install -y dune zarith digestif alcotest qcheck yojson
+
+  Build the whole project:
+
+    opam exec -- dune build
+
+  Zero output means success. Dune prints nothing on a clean build.
+
+  Run tests:
+
+    opam exec -- dune runtest
 
 ================================================================================
                               ARCHITECTURE
@@ -75,65 +81,3 @@
 
   Rule: if you need a symbol from a layer ABOVE, the design is wrong.
   Move the symbol down.
-
-================================================================================
-                                BUILD
-================================================================================
-
-  Requires opam, OCaml 4.14 or later, and Dune.
-
-  Install dependencies:
-
-    opam install -y dune zarith digestif alcotest qcheck yojson
-
-  Build the whole project:
-
-    opam exec -- dune build
-
-  Zero output means success. Dune prints nothing on a clean build.
-
-  Per layer:
-
-    opam exec -- dune build lib\common\
-    opam exec -- dune build lib\crypto\
-    opam exec -- dune build lib\crypto\curve\
-
-  Run tests (once they exist):
-
-    opam exec -- dune runtest
-
-================================================================================
-                                LAYOUT
-================================================================================
-
-  lib/
-  |
-  +-- dune                        (dirs common crypto bitcoin analysis storage application)
-  |
-  +-- common/
-  |   +-- dune
-  |   +-- common.ml               (re-exports of the four error families)
-  |   +-- error.ml                (Parse_error, Der_error, Signature_error, Recovery_error)
-  |
-  +-- crypto/
-  |   +-- dune                    (library crypto)
-  |   +-- field.ml(i)             (F_p arithmetic, p = 2^256 - 2^32 - 977)
-  |   +-- scalar.ml(i)            (F_n arithmetic, n = secp256k1 group order)
-  |   |
-  |   +-- curve/
-  |       +-- dune                (library crypto_curve)
-  |       +-- point.ml(i)         (type t = Infinity | Finite { x; y })
-  |       +-- secp256k1.ml(i)     (a, b, generator, is_on_curve)
-  |       +-- arithmetic.ml(i)    (neg, add, double, scalar_mul, equal)
-  |       +-- serialization.ml(i) (SEC1 compressed / uncompressed)
-  |
-  +-- bitcoin/                    (not yet populated)
-  +-- analysis/                   (not yet populated)
-  +-- storage/                    (not yet populated)
-  +-- application/                (not yet populated)
-
-  test/
-  +-- unit/
-  |   +-- crypto_curve/
-  |       +-- test_curve.ml       (next deliverable)
-  +-- fixtures/                   (empty -- GEC 2 vectors go here)

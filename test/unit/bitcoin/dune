@@ -9,3 +9,8 @@
 (executables
  (names test_script_types test_script_parser)
  (libraries script_types alcotest))
+
+(executable
+ (name test_signature_extraction)
+ (libraries bitcoin alcotest))
+

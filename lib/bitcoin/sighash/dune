@@ -1,0 +1,5 @@
+(library
+ (name sighash)
+ (wrapped false)
+ (libraries bitcoin_tx encoding hash)
+ (modules bip143 legacy))
