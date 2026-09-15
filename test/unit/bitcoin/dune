@@ -1,6 +1,6 @@
 (executables
- (names test_tx_types test_tx_parser)
- (libraries bitcoin_tx alcotest))
+ (names test_tx_types test_tx_parser test_script_types)
+ (libraries bitcoin_tx script_types alcotest))
 
 (executable
  (name prop_tx_parser)
