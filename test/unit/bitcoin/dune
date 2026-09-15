@@ -1,0 +1,3 @@
+(executable
+ (name test_tx_types)
+ (libraries bitcoin_tx alcotest))

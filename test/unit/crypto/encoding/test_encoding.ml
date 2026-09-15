@@ -143,6 +143,24 @@ module Bu_tests = struct
     Alcotest.(check int) "u32_le max" 0xFFFF_FFFF
       (ok_exn (Bytes_util.read_u32_le (Bytes_util.write_u32_le 0xFFFF_FFFF) 0))
 
+  (* Bitcoin transaction output values are unsigned 64-bit (satoshis).
+     Max supply = 20_999_999_9769_0000 sat < Int64.max_int = 9_223_372_036_854_775_807.
+     Verify that values with high bits set in each 32-bit half survive the
+     Int32 intermediate stage without sign-extension corruption. *)
+  let test_u64_high_bit_halves () =
+    (* High bit of low half set: 0x0000_0000_8000_0000L *)
+    let v1 = 0x0000_0000_8000_0000L in
+    Alcotest.(check int64) "u64 high bit low half" v1
+      (ok_exn (Bytes_util.read_u64_le (Bytes_util.write_u64_le v1) 0));
+    (* High bit of high half set: 0x8000_0000_0000_0000L (negative as Int64) *)
+    let v2 = Int64.min_int in (* 0x8000_0000_0000_0000L *)
+    Alcotest.(check int64) "u64 Int64.min_int roundtrip" v2
+      (ok_exn (Bytes_util.read_u64_le (Bytes_util.write_u64_le v2) 0));
+    (* Max Bitcoin value: 21_000_000 BTC in satoshis *)
+    let max_btc_sat = Int64.of_string "2100000000000000" in
+    Alcotest.(check int64) "u64 max bitcoin supply" max_btc_sat
+      (ok_exn (Bytes_util.read_u64_le (Bytes_util.write_u64_le max_btc_sat) 0))
+
   let tests = [
     "u16 little-endian",   `Quick, test_u16_le;
     "u32 little-endian",   `Quick, test_u32_le;
@@ -155,6 +173,7 @@ module Bu_tests = struct
     "read oob",            `Quick, test_read_oob;
     "zero values",         `Quick, test_zero_values;
     "max values",          `Quick, test_max_values;
+    "u64 high-bit halves", `Quick, test_u64_high_bit_halves;
   ]
 end
 
