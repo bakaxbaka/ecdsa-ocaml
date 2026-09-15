@@ -24,7 +24,7 @@ let z_of_bytes b =
   !result
 
 let verify ~pubkey ~z (sig_ : Signature.t) =
-  (* Public key must not be the point at infinity. *)
+  (* Public keys must be finite points on secp256k1. *)
   match pubkey with
   | Curve.Point.Infinity -> false
   | _ when not (Curve.Point.is_on_curve pubkey) -> false

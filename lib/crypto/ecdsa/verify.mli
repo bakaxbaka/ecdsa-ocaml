@@ -17,7 +17,7 @@
 
     {1 Inputs}
 
-    - [pubkey]: a secp256k1 curve point (not the point at infinity)
+    - [pubkey]: a finite secp256k1 curve point
     - [z]: the message hash as a [Z.t], typically the 256-bit hash256 of a
       SIGHASH preimage, interpreted as a big-endian integer
     - [sig]: a validated {!Signature.t} with r, s in [1, n-1]

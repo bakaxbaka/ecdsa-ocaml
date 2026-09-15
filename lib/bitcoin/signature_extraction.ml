@@ -49,17 +49,6 @@ let error_to_string = function
 
 (* ------------------------------------------------------------------ helpers *)
 
-(* Check if an instruction is a DER-encoded signature *)
-let is_der_signature instr =
-  match instr with
-  | Script.Push_data { opcode; data } ->
-    (* DER signatures are typically 71, 72, or 73 bytes with opcodes 0x47, 0x48, 0x49 *)
-    let len = Bytes.length data in
-    (len = 71 && opcode = 0x47) ||
-    (len = 72 && opcode = 0x48) ||
-    (len = 73 && opcode = 0x49)
-  | _ -> false
-
 (* Check if an instruction is a public key push *)
 let is_public_key instr =
   match instr with
@@ -77,13 +66,12 @@ let extract_signatures (script : Script.t) =
     match instrs with
     | [] -> List.rev acc
     | i :: rest ->
-      if is_der_signature i then
-        let data = Script.data_of i in
-        match Der.of_bytes data with
+      match i with
+      | Script.Push_data { data; _ } ->
+        (match Der.of_bytes data with
         | Ok parsed -> loop (parsed :: acc) rest
-        | Error e   -> loop acc rest  (* Skip invalid DER, let caller handle *)
-      else
-        loop acc rest
+        | Error _   -> loop acc rest)
+      | _ -> loop acc rest
   in
   loop [] script
 
@@ -115,6 +103,18 @@ let extract_legacy (input_index : int) (script_sig : bytes) : (t, error) result 
 
 (* ------------------------------------------------------------------ SegWit input *)
 
+(* Scan every witness item: multisig stacks can contain non-signature items
+   before, between, or after DER signatures. *)
+let extract_witness_sigs witnesses =
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | witness :: rest ->
+      match Der.of_bytes witness with
+      | Ok parsed -> loop (parsed :: acc) rest
+      | Error _ -> loop acc rest
+  in
+  loop [] witnesses
+
 (* For SegWit inputs, signatures are in the witness stack *)
 let extract_segwit
     (input_index : int)
@@ -128,17 +128,7 @@ let extract_segwit
        For P2WPKH: [signature, public_key]
        For P2WSH: [witness script, ..., final_witness] *)
 
-    (* Extract signatures from witness stack *)
-    let rec extract_witness_sigs acc witnesses =
-      match witnesses with
-      | [] -> List.rev acc
-      | w :: rest ->
-        match Der.of_bytes w with
-        | Ok parsed -> extract_witness_sigs (parsed :: acc) rest
-        | Error _   -> List.rev acc  (* Non-signature item *)
-    in
-
-    let signatures = extract_witness_sigs [] witness_stack in
+    let signatures = extract_witness_sigs witness_stack in
     if signatures = [] then
       Error No_signature
     else begin

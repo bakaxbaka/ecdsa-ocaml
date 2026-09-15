@@ -7,7 +7,7 @@
 
     For legacy inputs:
     - Parse scriptSig using {!Script.Parser.of_bytes}
-    - Extract DER-encoded signatures (OP_DATA_71/72/73 followed by 71/72/73 bytes)
+    - Scan every pushed item for strict DER-encoded signatures
     - Parse DER signatures using {!Der.of_bytes}
     - Extract public key if present (OP_DATA_33/65 followed by 33/65 bytes)
 
