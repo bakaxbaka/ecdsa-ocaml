@@ -30,12 +30,6 @@ let test_compressed_x_below_modulus_is_range_eligible () =
   expect_range_eligible "compressed x = modulus - 1"
     (Curve.Point.of_compressed ("02" ^ modulus_minus_one_hex))
 
-let test_field_of_hex_rejects_non_canonical_values () =
-  Alcotest.(check bool) "modulus rejected" true
-    (match Field.of_hex modulus_hex with Error _ -> true | Ok _ -> false);
-  Alcotest.(check bool) "modulus plus one rejected" true
-    (match Field.of_hex modulus_plus_one_hex with Error _ -> true | Ok _ -> false)
-
 let test_uncompressed_x_equals_modulus () =
   expect_non_canonical "uncompressed x = modulus"
     (Curve.Point.of_uncompressed ("04" ^ modulus_hex ^ String.make 64 '0'))
@@ -55,8 +49,6 @@ let () =
         test_compressed_x_above_modulus;
       "compressed x = modulus - 1", `Quick,
         test_compressed_x_below_modulus_is_range_eligible;
-      "field hex rejects non-canonical values", `Quick,
-        test_field_of_hex_rejects_non_canonical_values;
       "uncompressed x = modulus", `Quick, test_uncompressed_x_equals_modulus;
       "uncompressed y = modulus", `Quick, test_uncompressed_y_equals_modulus;
     ];

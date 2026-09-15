@@ -52,11 +52,15 @@ let test_make_zero_s () =
   Alcotest.(check bool) "s=0 rejected" true
     (match Signature.make Z.one Z.zero with Error _ -> true | Ok _ -> false)
 
-let test_make_negative_components () =
-  Alcotest.(check bool) "negative r rejected" true
-    (match Signature.make (Z.neg Z.one) Z.one with Error _ -> true | Ok _ -> false);
-  Alcotest.(check bool) "negative s rejected" true
-    (match Signature.make Z.one (Z.neg Z.one) with Error _ -> true | Ok _ -> false)
+let test_make_negative_r () =
+  match Signature.make (Z.neg Z.one) Z.one with
+  | Error Common.Der_error.R_out_of_range -> ()
+  | _ -> Alcotest.fail "expected R_out_of_range"
+
+let test_make_negative_s () =
+  match Signature.make Z.one (Z.neg Z.one) with
+  | Error Common.Der_error.S_out_of_range -> ()
+  | _ -> Alcotest.fail "expected S_out_of_range"
 
 let test_make_r_equals_n () =
   Alcotest.(check bool) "r=n rejected" true
@@ -163,9 +167,12 @@ let test_verify_infinity_pubkey () =
 
 let test_verify_off_curve_pubkey () =
   let (_, z, sig_) = make_synthetic_vector ~d_int:7 ~k_int:13 ~z_int:12345 in
-  let off_curve = Curve.Point.Point { x = Field.zero; y = Field.zero } in
+  let off_curve_pubkey = Curve.Point.Point {
+    x = Field.of_z Z.zero;
+    y = Field.of_z Z.zero;
+  } in
   Alcotest.(check bool) "off-curve pubkey fails" false
-    (Verify.verify ~pubkey:off_curve ~z sig_)
+    (Verify.verify ~pubkey:off_curve_pubkey ~z sig_)
 
 (* ------------------------------------------------------------------ verify_bytes *)
 
@@ -228,7 +235,8 @@ let () =
       "valid r and s",        `Quick, test_make_valid;
       "r = 0 rejected",       `Quick, test_make_zero_r;
       "s = 0 rejected",       `Quick, test_make_zero_s;
-      "negative components rejected", `Quick, test_make_negative_components;
+      "negative r rejected",  `Quick, test_make_negative_r;
+      "negative s rejected",  `Quick, test_make_negative_s;
       "r = n rejected",       `Quick, test_make_r_equals_n;
       "s = n rejected",       `Quick, test_make_s_equals_n;
       "r = n-1 accepted",     `Quick, test_make_r_n_minus_1;

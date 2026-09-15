@@ -27,8 +27,8 @@ let verify ~pubkey ~z (sig_ : Signature.t) =
   (* Public keys must be finite points on secp256k1. *)
   match pubkey with
   | Curve.Point.Infinity -> false
-  | Curve.Point.Point _ when not (Curve.Point.is_on_curve pubkey) -> false
-  | Curve.Point.Point _ ->
+  | _ when not (Curve.Point.is_on_curve pubkey) -> false
+  | _ ->
     let r = Signature.r sig_ in
     let s = Signature.s sig_ in
     (* s must be invertible mod n (guaranteed by Signature.make, but be safe) *)
