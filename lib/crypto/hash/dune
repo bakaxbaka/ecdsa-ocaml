@@ -1,0 +1,4 @@
+(library
+ (name hash)
+ (wrapped false)
+ (libraries digestif))
