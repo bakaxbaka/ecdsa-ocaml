@@ -52,6 +52,16 @@ let test_make_zero_s () =
   Alcotest.(check bool) "s=0 rejected" true
     (match Signature.make Z.one Z.zero with Error _ -> true | Ok _ -> false)
 
+let test_make_negative_r () =
+  match Signature.make (Z.neg Z.one) Z.one with
+  | Error Common.Der_error.R_out_of_range -> ()
+  | _ -> Alcotest.fail "expected R_out_of_range"
+
+let test_make_negative_s () =
+  match Signature.make Z.one (Z.neg Z.one) with
+  | Error Common.Der_error.S_out_of_range -> ()
+  | _ -> Alcotest.fail "expected S_out_of_range"
+
 let test_make_r_equals_n () =
   Alcotest.(check bool) "r=n rejected" true
     (match Signature.make n Z.one with Error _ -> true | Ok _ -> false)
@@ -216,6 +226,8 @@ let () =
       "valid r and s",        `Quick, test_make_valid;
       "r = 0 rejected",       `Quick, test_make_zero_r;
       "s = 0 rejected",       `Quick, test_make_zero_s;
+      "negative r rejected",  `Quick, test_make_negative_r;
+      "negative s rejected",  `Quick, test_make_negative_s;
       "r = n rejected",       `Quick, test_make_r_equals_n;
       "s = n rejected",       `Quick, test_make_s_equals_n;
       "r = n-1 accepted",     `Quick, test_make_r_n_minus_1;
