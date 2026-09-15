@@ -121,7 +121,12 @@ let compute (tx : transaction) input_index script_code value sighash_type =
       (* ---- Step 2: hashPrevouts ----------------------------------------- *)
       let hash_prevouts =
         if anyonecanpay then
+<<<<<<< HEAD
           Bytes.make 32 '\x00'  (* ANYONECANPAY: hash of empty list *)
+=======
+          (* BIP143: hashPrevouts is 32 zero bytes when ANYONECANPAY is set *)
+          Bytes.make 32 '\x00'
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
         else
           let prevouts = List.map ser_prevout tx.inputs in
           Hash.hash256 (Bytes_util.concat prevouts)
@@ -130,6 +135,11 @@ let compute (tx : transaction) input_index script_code value sighash_type =
       (* ---- Step 3: hashSequence ----------------------------------------- *)
       let hash_sequence =
         if anyonecanpay || base_type = sighash_none || base_type = sighash_single then
+<<<<<<< HEAD
+=======
+          (* BIP143: hashSequence is 32 zero bytes when ANYONECANPAY is set
+             or when the base type is SIGHASH_NONE or SIGHASH_SINGLE *)
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
           Bytes.make 32 '\x00'
         else
           let sequences = List.map ser_sequence tx.inputs in

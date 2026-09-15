@@ -60,6 +60,7 @@ let error_to_string = function
 
 (* ------------------------------------------------------------------ helpers *)
 
+<<<<<<< HEAD
 (* Check if bytes could be a signature candidate (has valid sighash byte) *)
 let is_signature_candidate (data : bytes) =
   let len = Bytes.length data in
@@ -71,6 +72,20 @@ let is_signature_candidate (data : bytes) =
     match sighash with
     | 0x01 | 0x02 | 0x03 | 0x81 | 0x82 | 0x83 -> true
     | _ -> false
+=======
+(* Check if an instruction is a DER-encoded signature.
+   Accept any valid push data that could be a DER signature (typically 70-73 bytes).
+   We check for OP_PUSHDATA opcodes and reasonable lengths rather than hardcoding. *)
+let is_der_signature instr =
+  match instr with
+  | Script.Push_data { opcode; data } ->
+    (* DER signatures have a minimum length and reasonable maximum.
+       The opcode indicates the push length. Accept all standard push opcodes. *)
+    let len = Bytes.length data in
+    (* Valid DER signatures are at least ~8 bytes and at most ~73 bytes plus sighash *)
+    len >= 8 && len <= 74 && opcode >= 0x01 && opcode <= 0x4b
+  | _ -> false
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
 
 (* Check if an instruction is a public key push *)
 let is_public_key instr =
@@ -83,9 +98,14 @@ let is_public_key instr =
     (len = 65 && opcode = 0x41)
   | _ -> false
 
+<<<<<<< HEAD
 (* Extract signatures from parsed script instructions, scanning all push payloads.
    Returns (signatures, first_der_error) where first_der_error is the first
    Invalid_der error encountered if any. *)
+=======
+(* Extract signatures from parsed script instructions.
+   Try to parse each push data item as DER, collecting all valid signatures. *)
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
 let extract_signatures (script : Script.t) =
   let rec loop acc first_err instrs =
     match instrs with
@@ -93,6 +113,7 @@ let extract_signatures (script : Script.t) =
     | i :: rest ->
       match i with
       | Script.Push_data { data; _ } ->
+<<<<<<< HEAD
         if is_signature_candidate data then
           (* For simplicity, skip strict DER parsing for now *)
           (* In a real implementation, this would use Ecdsa_der.of_bytes *)
@@ -100,6 +121,13 @@ let extract_signatures (script : Script.t) =
         else
           loop acc first_err rest
       | _ -> loop acc first_err rest
+=======
+        (* Try to parse any push data as DER signature *)
+        (match Der.of_bytes data with
+         | Ok parsed -> loop (parsed :: acc) rest
+         | Error _   -> loop acc rest)
+      | _ -> loop acc rest
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
   in
   loop [] None script
 
@@ -137,8 +165,25 @@ let extract_legacy (input_index : int) (script_sig : bytes) : (t, error) result 
 (* ------------------------------------------------------------------ SegWit input *)
 
 (* For SegWit inputs, signatures are in the witness stack.
+<<<<<<< HEAD
    Scans ALL witness items (not just up to first non-signature) to handle
    multisig witnesses with an initial empty dummy item. *)
+=======
+   Scan ALL witness items for valid DER signatures instead of stopping at the first non-signature. *)
+let extract_witness_sigs witnesses =
+  let rec loop acc stack =
+    match stack with
+    | [] -> List.rev acc
+    | w :: rest ->
+      (* Try to parse each witness item as DER signature *)
+      (match Der.of_bytes w with
+       | Ok parsed -> loop (parsed :: acc) rest
+       | Error _   -> loop acc rest)
+  in
+  loop [] witnesses
+
+(* For SegWit inputs, signatures are in the witness stack *)
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
 let extract_segwit
     (input_index : int)
     (witness_stack : bytes list)
@@ -151,6 +196,7 @@ let extract_segwit
        For P2WPKH: [signature, public_key]
        For P2WSH: [witness script, ..., final_witness]
 
+<<<<<<< HEAD
        We scan ALL items, not just up to the first non-signature, because
        multisig inputs commonly have an initial empty dummy item. *)
 
@@ -167,6 +213,9 @@ let extract_segwit
     in
 
     let signatures = extract_witness_sigs [] witness_stack in
+=======
+    let signatures = extract_witness_sigs witness_stack in
+>>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
     if signatures = [] then
       Error No_signature
     else begin
