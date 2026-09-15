@@ -48,7 +48,14 @@ module T = struct
         else s
       in
       if s = "" then Error "Empty hexadecimal string"
-      else Ok (of_z (Z.of_string ("0x" ^ s)))
+      else
+        let z = Z.of_string ("0x" ^ s) in
+        if Z.compare z modulus >= 0 then
+          Error "Coordinate out of field range (>= p)"
+        else if Z.sign z < 0 then
+          Error "Negative coordinate"
+        else
+          Ok (of_z z)
     with _ -> Error "Invalid hexadecimal string"
 end
 

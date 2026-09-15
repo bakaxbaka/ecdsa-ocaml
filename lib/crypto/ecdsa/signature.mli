@@ -11,8 +11,8 @@
 type t
 
 (** [make r s] constructs a signature if both [r] and [s] are in [1, n-1].
-    Returns [Error `Zero_r] if r = 0, [Error `Zero_s] if s = 0,
-    [Error `R_out_of_range] if r >= n, [Error `S_out_of_range] if s >= n. *)
+    Returns an error if either component is not in [1, n-1], including
+    negative or zero values. *)
 val make : Z.t -> Z.t -> (t, Common.Der_error.t) result
 
 (** [r sig] returns the r component. *)

@@ -24,10 +24,11 @@ let z_of_bytes b =
   !result
 
 let verify ~pubkey ~z (sig_ : Signature.t) =
-  (* Public key must not be the point at infinity. *)
+  (* Public keys must be finite points on secp256k1. *)
   match pubkey with
   | Curve.Point.Infinity -> false
-  | _ ->
+  | Curve.Point.Point _ when not (Curve.Point.is_on_curve pubkey) -> false
+  | Curve.Point.Point _ ->
     let r = Signature.r sig_ in
     let s = Signature.s sig_ in
     (* s must be invertible mod n (guaranteed by Signature.make, but be safe) *)
