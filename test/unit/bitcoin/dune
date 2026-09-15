@@ -1,3 +1,7 @@
-(executable
- (name test_tx_types)
+(executables
+ (names test_tx_types test_tx_parser)
  (libraries bitcoin_tx alcotest))
+
+(executable
+ (name prop_tx_parser)
+ (libraries bitcoin_tx qcheck qcheck-alcotest alcotest))

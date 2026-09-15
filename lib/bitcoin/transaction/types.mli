@@ -67,7 +67,7 @@ type tx_input = {
 type tx_output = {
   value         : Int64.t;
   (** Output value in satoshis.  Bitcoin's maximum possible value
-      (20_999_999.97690000 BTC = 2_099_999_997_690_000 sat) fits
+      (20_999_999.97690000 BTC = 2_099_999_997_690_000 sat, i.e. 2_099_999_997_690_000) fits
       well within [Int64.max_int] (9_223_372_036_854_775_807).
       Negative values are invalid and must be rejected by the parser.
       [Int64.t] is used rather than [int] to be explicit about the

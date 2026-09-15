@@ -1,8 +1,0 @@
-lib: [
-  "_build/install/default/lib/ecdsa/META"
-  "_build/install/default/lib/ecdsa/dune-package"
-  "_build/install/default/lib/ecdsa/opam"
-]
-bin: [
-  "_build/install/default/bin/ecdsa.exe"
-]

@@ -1,4 +1,4 @@
 (library
  (name bitcoin_tx)
  (wrapped false)
- (libraries common))
+ (libraries common encoding))

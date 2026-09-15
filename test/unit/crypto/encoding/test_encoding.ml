@@ -144,7 +144,7 @@ module Bu_tests = struct
       (ok_exn (Bytes_util.read_u32_le (Bytes_util.write_u32_le 0xFFFF_FFFF) 0))
 
   (* Bitcoin transaction output values are unsigned 64-bit (satoshis).
-     Max supply = 20_999_999_9769_0000 sat < Int64.max_int = 9_223_372_036_854_775_807.
+     Max supply = 2_099_999_997_690_000 sat < Int64.max_int = 9_223_372_036_854_775_807.
      Verify that values with high bits set in each 32-bit half survive the
      Int32 intermediate stage without sign-extension corruption. *)
   let test_u64_high_bit_halves () =
