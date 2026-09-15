@@ -1,3 +1,3 @@
-(executable
- (name test_der)
+(executables
+ (names test_der test_verify)
  (libraries ecdsa_der zarith alcotest))
