@@ -16,4 +16,4 @@ _build/
 *.swp
 *.swo
 .DS_Store
-"@ | Set-Content -Path "D:\ecdsa-ocaml\.gitignore" -Encoding utf8
+"@ | Set-Content -Path "D:\ecdsa-ocaml\.gitignore" -Encoding utf8_build/ 
