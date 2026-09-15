@@ -1,0 +1,3 @@
+(executable
+ (name test_der)
+ (libraries ecdsa_der zarith alcotest))
