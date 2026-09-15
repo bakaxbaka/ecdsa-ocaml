@@ -22,6 +22,21 @@ let ok_exn lbl = function
 
 let is_error = function Error _ -> true | Ok _ -> false
 
+let hex_of_bytes b =
+  Bytes.fold_left (fun acc c -> acc ^ Printf.sprintf "%02x" (Char.code c)) "" b
+
+let check_digest label expected actual =
+  Alcotest.(check string) label expected (hex_of_bytes actual)
+
+let bytes_of_hex h =
+  let n = String.length h / 2 in
+  let bytes = Bytes.create n in
+  for i = 0 to n - 1 do
+    let byte = Scanf.sscanf (String.sub h (i * 2) 2) "%x" Fun.id in
+    Bytes.set bytes i (Char.chr byte)
+  done;
+  bytes
+
 (* ------------------------------------------------------------------ helpers *)
 
 (* Build a minimal SegWit transaction with n_inputs inputs and n_outputs outputs. *)
@@ -92,8 +107,7 @@ let test_sighash_none () =
 
 let test_sighash_none_zeroes_other_sequences () =
   (* Two transactions identical except input 1 sequence differs.
-     With BIP143, hashSequence includes ALL input sequences (never zeroed).
-     Sequence differences DO affect the hash. *)
+     SIGHASH_NONE zeroes hashSequence, so the other sequence is ignored. *)
   let tx1 = make_segwit_tx 2 2 in
   let tx2 = { tx1 with
     inputs = List.mapi (fun i inp ->
@@ -103,7 +117,7 @@ let test_sighash_none_zeroes_other_sequences () =
   let value = Int64.of_int 10000 in
   let h1 = ok_exn "none_seq1" (Bip143.compute tx1 0 sc value sighash_none) in
   let h2 = ok_exn "none_seq2" (Bip143.compute tx2 0 sc value sighash_none) in
-  Alcotest.(check bool) "NONE: other input seq affects hash" false (Bytes.equal h1 h2)
+  Alcotest.(check bool) "NONE: other input sequence ignored" true (Bytes.equal h1 h2)
 
 (* ------------------------------------------------------------------ SIGHASH_SINGLE *)
 
@@ -159,6 +173,46 @@ let test_anyonecanpay_extra_inputs_ignored () =
   let h2 = ok_exn "acp2" (Bip143.compute tx2 0 sc value sht) in
   Alcotest.(check bool) "extra input ignored with ANYONECANPAY" true
     (Bytes.equal h1 h2)
+
+(* ------------------------------------------------------------------ BIP143 reference vectors *)
+
+let bip143_reference_tx =
+  ok_exn "BIP143 P2SH-P2WSH transaction" (Parser.of_hex
+    "010000000136641869ca081e70f394c6948e8af409e18b619df2ed74aa106c1ca29787b96e" ^
+    "0100000000ffffffff0200e9a435000000001976a914389ffce9cd9ae88dcc0631e88a821" ^
+    "ffdbe9bfe2688acc0832f05000000001976a9147480a33f950689af511e6e84c138dbbd3c" ^
+    "3ee41588ac00000000")
+
+let bip143_reference_script_code =
+  bytes_of_hex (
+    "56210307b8ae49ac90a048e9b53357a2354b3334e9c8bee813ecb98e99a7e07e8c3ba32103" ^
+    "b28f0c28bfab54554ae8c658ac5c3e0ce6e79ad336331f78c428dd43eea8449b21034b8113" ^
+    "d703413d57761b8b9781957b8c0ac1dfe69f492580ca4195f50376ba4a21033400f6afecb8" ^
+    "33092a9a21cfdf1ed1376e58c5d1f47de74683123987e967a8f42103a6d48b1131e94ba04d" ^
+    "9737d61acdaa1322008af9602b3b14862c07a1789aac162102d8b661b0b3302ee2f162b09e" ^
+    "07a55ad5dfbe673a9f01d9f0c19617681024306b56ae")
+
+let test_bip143_reference_vectors () =
+  let value = Int64.of_string "987654321" in
+  let cases = [
+    "SIGHASH_ALL", sighash_all,
+      "185c0be5263dce5b4bb50a047973c1b6272bfbd0103a89444597dc40b248ee7c";
+    "SIGHASH_NONE", sighash_none,
+      "e9733bc60ea13c95c6527066bb975a2ff29a925e80aa14c213f686cbae5d2f36";
+    "SIGHASH_SINGLE", sighash_single,
+      "1e1f1c303dc025bd664acb72e583e933fae4cff9148bf78c157d1e8f78530aea";
+    "SIGHASH_ALL|ANYONECANPAY", sighash_all lor sighash_anyonecanpay,
+      "2a67f03e63a6a422125878b40b82da593be8d4efaafe88ee528af6e5a9955c6e";
+    "SIGHASH_NONE|ANYONECANPAY", sighash_none lor sighash_anyonecanpay,
+      "781ba15f3779d5542ce8ecb5c18716733a5ee42a6f51488ec96154934e2c890a";
+    "SIGHASH_SINGLE|ANYONECANPAY", sighash_single lor sighash_anyonecanpay,
+      "511e8e52ed574121fc1b654970395502128263f62662e076dc6baf05c2e6a99b";
+  ] in
+  List.iter (fun (label, sighash_type, expected) ->
+    let actual = ok_exn label
+      (Bip143.compute bip143_reference_tx 0 bip143_reference_script_code value sighash_type) in
+    check_digest label expected actual
+  ) cases
 
 (* ------------------------------------------------------------------ error paths *)
 
@@ -233,6 +287,9 @@ let () =
       "ALL | ANYONECANPAY",           `Quick, test_sighash_all_anyonecanpay;
       "NONE | ANYONECANPAY",          `Quick, test_sighash_none_anyonecanpay;
       "extra inputs ignored",         `Quick, test_anyonecanpay_extra_inputs_ignored;
+    ];
+    "BIP143 reference vectors", [
+      "all sighash modes",            `Quick, test_bip143_reference_vectors;
     ];
     "error paths", [
       "index out of bounds",          `Quick, test_index_out_of_bounds;
