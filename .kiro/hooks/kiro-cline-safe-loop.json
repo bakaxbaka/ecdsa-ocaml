@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Kiro-CLINE Repair Loop (Safe)",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "command",
+        "command": "param([string]$WorkspaceRoot = 'D:\\ecdsa-ocaml', [string]$SessionId = '1789462133168_k6kyu'); Set-Location $WorkspaceRoot; $buildOutput = & opam exec -- dune build lib/crypto/ 2>&1; $buildExit = $LASTEXITCODE; $buildOutput | Select-Object -First 80; Write-Host \"`n=== BUILD EXIT CODE: $buildExit ===\" -ForegroundColor Cyan; if ($buildExit -eq 0) { Write-Host \"BUILD: PASS\" -ForegroundColor Green } else { Write-Host \"BUILD: FAIL\" -ForegroundColor Red }; $kiroPrompt = \"You are working on the Dune/OCaml project at $WorkspaceRoot.`n`nBUILD OUTPUT:`n$buildOutput`n`nGOAL: propose the single most important command to fix the next problem. Respond in EXACTLY this format: CMD: <one PowerShell command> WHY: <one sentence>. If nothing needs fixing, respond: DONE\"; $kiroOut = & kiro --id $SessionId --non-interactive $kiroPrompt 2>&1 | Out-String; Write-Host \"`n=== KIRO OUTPUT ===\" -ForegroundColor Cyan; Write-Host $kiroOut; if ($kiroOut -match '(?m)^\\s*DONE\\s*$') { Write-Host \"kiro reports nothing to fix.\" -ForegroundColor Green; exit 0 }; $m = [regex]::Match($kiroOut, '(?m)^\\s*CMD:\\s*(.+)$'); if (-not $m.Success) { Write-Host \"kiro produced no CMD line.\" -ForegroundColor Yellow; exit 1 }; $cmd = $m.Groups[1].Value.Trim(); $allowedCommands = @('opam exec -- dune build', 'opam exec -- dune runtest', 'opam exec -- dune fmt', 'git status --short', 'git diff --stat', 'git diff', 'Get-ChildItem', 'Get-Content', 'Select-String'); $isSafe = $false; foreach ($allowed in $allowedCommands) { if ($cmd -match \"^\\\\s*\\\\Q$allowed\\\\E\") { $isSafe = $true; break } }; if (-not $isSafe) { Write-Host \"Command not in allowlist. Requires manual approval.\" -ForegroundColor Yellow; Write-Host \"Proposed command: $cmd\" -ForegroundColor Yellow; exit 1 }; Write-Host \"`n=== Cline will execute (safe command) ===\" -ForegroundColor Cyan; Write-Host $cmd -ForegroundColor Cyan; $clinePrompt = \"Execute this exact PowerShell command in $WorkspaceRoot: $cmd. Run it verbatim. Do not modify it. Do not rephrase it.\"; Write-Host \"`n=== Cline output ===\" -ForegroundColor Cyan; & cline --auto-approve:true --cwd $WorkspaceRoot $clinePrompt 2>&1 | Write-Host"
+      },
+      "enabled": false
+    }
+  ]
+}
