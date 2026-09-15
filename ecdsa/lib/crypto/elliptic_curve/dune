@@ -1,0 +1,3 @@
+(library
+ (name elliptic_curve)
+ (libraries zarith))

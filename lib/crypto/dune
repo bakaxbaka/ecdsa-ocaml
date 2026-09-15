@@ -1,0 +1,4 @@
+(library
+ (name crypto)
+ (wrapped true)
+ (libraries zarith common))

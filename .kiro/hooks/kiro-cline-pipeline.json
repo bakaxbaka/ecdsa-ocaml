@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Kiro → CLINE Autonomous Pipeline",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "agent",
+        "prompt": "param(\n    [string]$WorkspaceRoot = 'D:\\ecdsa-ocaml',\n    [string]$SessionId     = '1789462133168_k6kyu'\n)\n\nSet-Location $WorkspaceRoot\n\n# ---- 1. Ask kiro for the next command ----\n\n$kiroPrompt = @\"\nYou are working on the Dune/OCaml project at $WorkspaceRoot.\n\nCURRENT STATE:\n- lib/common builds clean\n- lib/crypto/field.ml, field.mli, scalar.ml, scalar.mli, point.ml, point.mli exist\n- lib/crypto/dune exists\n- The build has warnings or errors\n\nGOAL: propose the single most important command to fix the next problem\nso that ``opam exec -- dune build`` progresses.\n\nRespond in EXACTLY this format, nothing else:\n\nCMD: <one PowerShell command, single line>\nWHY: <one sentence>\n\nNo plans. No explanations. If nothing needs fixing, respond: DONE\n\"@\n\nWrite-Host \"=== asking kiro ===\" -ForegroundColor Cyan\n$kiroOut = & kiro --id $SessionId --non-interactive $kiroPrompt 2>&1 | Out-String\nWrite-Host $kiroOut\n\nif ($kiroOut -match '(?m)^\\s*DONE\\s*$') {\n    Write-Host \"kiro reports nothing to fix.\" -ForegroundColor Green\n    exit 0\n}\n\n$m = [regex]::Match($kiroOut, '(?m)^\\s*CMD:\\s*(.+)$')\nif (-not $m.Success) {\n    Write-Host \"kiro produced no CMD line.\" -ForegroundColor Yellow\n    exit 1\n}\n\n$cmd = $m.Groups[1].Value.Trim()\n\n# ---- 2. Hand the command to cline ----\n\nWrite-Host \"`n=== cline will execute ===\" -ForegroundColor Cyan\nWrite-Host $cmd -ForegroundColor Yellow\n\n$clinePrompt = @\"\nExecute this exact PowerShell command in $WorkspaceRoot:\n\n    $cmd\n\nRun it verbatim. Do not modify it. Do not rephrase it. Do not run any\nother command. Do not add verification steps. Execute only this command\nand report its raw output.\n\"@\n\nWrite-Host \"`n=== cline output ===\" -ForegroundColor Cyan\n& cline --auto-approve:true --cwd $WorkspaceRoot --non-interactive $clinePrompt 2>&1 | Write-Host\n\n# ---- 3. Show the resulting build state ----\n\nWrite-Host \"`n=== build state after cline ===\" -ForegroundColor Cyan\n& powershell.exe -NoProfile -Command \"opam exec -- dune build 2>&1 | Select-Object -First 40\""
+      },
+      "enabled": false
+    }
+  ]
+}

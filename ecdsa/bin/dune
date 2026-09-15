@@ -1,0 +1,4 @@
+(executable
+ (public_name ecdsa)
+ (name main)
+ (libraries ecdsa))
