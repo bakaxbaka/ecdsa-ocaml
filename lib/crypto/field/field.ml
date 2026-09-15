@@ -55,11 +55,14 @@ module T = struct
       else
         let z = Z.of_string ("0x" ^ s) in
 <<<<<<< HEAD
+<<<<<<< HEAD
         if Z.compare z modulus >= 0 then
           Error "Value out of field range"
         else Ok (of_z z)
 =======
         (* Check for non-canonical encoding: coordinates >= p must be rejected *)
+=======
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
         if Z.compare z modulus >= 0 then
           Error "Coordinate out of field range (>= p)"
         else if Z.sign z < 0 then

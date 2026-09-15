@@ -122,28 +122,32 @@ let compute (tx : transaction) input_index script_code value sighash_type =
       let hash_prevouts =
         if anyonecanpay then
 <<<<<<< HEAD
+<<<<<<< HEAD
           Bytes.make 32 '\x00'  (* ANYONECANPAY: hash of empty list *)
 =======
           (* BIP143: hashPrevouts is 32 zero bytes when ANYONECANPAY is set *)
+=======
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
           Bytes.make 32 '\x00'
 >>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
         else
-          let prevouts = List.map ser_prevout tx.inputs in
-          Hash.hash256 (Bytes_util.concat prevouts)
+          Hash.hash256 (Bytes_util.concat (List.map ser_prevout tx.inputs))
       in
 
       (* ---- Step 3: hashSequence ----------------------------------------- *)
       let hash_sequence =
         if anyonecanpay || base_type = sighash_none || base_type = sighash_single then
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
           (* BIP143: hashSequence is 32 zero bytes when ANYONECANPAY is set
              or when the base type is SIGHASH_NONE or SIGHASH_SINGLE *)
 >>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
+=======
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
           Bytes.make 32 '\x00'
         else
-          let sequences = List.map ser_sequence tx.inputs in
-          Hash.hash256 (Bytes_util.concat sequences)
+          Hash.hash256 (Bytes_util.concat (List.map ser_sequence tx.inputs))
       in
 
       (* ---- Step 4: outpoint --------------------------------------------- *)
@@ -156,14 +160,7 @@ let compute (tx : transaction) input_index script_code value sighash_type =
       let value_le = u64_le value in
 
       (* ---- Step 7: nSequence -------------------------------------------- *)
-      let sequence =
-        if anyonecanpay then
-          signed_input.sequence
-        else
-          (* For non-ANYONECANPAY, all sequences are included as-is *)
-          signed_input.sequence
-      in
-      let sequence_le = u32_le sequence in
+      let sequence_le = u32_le signed_input.sequence in
 
       (* ---- Step 8: hashOutputs ------------------------------------------ *)
       let hash_outputs =

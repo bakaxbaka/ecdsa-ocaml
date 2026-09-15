@@ -61,6 +61,7 @@ let error_to_string = function
 (* ------------------------------------------------------------------ helpers *)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 (* Check if bytes could be a signature candidate (has valid sighash byte) *)
 let is_signature_candidate (data : bytes) =
   let len = Bytes.length data in
@@ -87,6 +88,8 @@ let is_der_signature instr =
   | _ -> false
 >>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
 
+=======
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
 (* Check if an instruction is a public key push *)
 let is_public_key instr =
   match instr with
@@ -114,6 +117,7 @@ let extract_signatures (script : Script.t) =
       match i with
       | Script.Push_data { data; _ } ->
 <<<<<<< HEAD
+<<<<<<< HEAD
         if is_signature_candidate data then
           (* For simplicity, skip strict DER parsing for now *)
           (* In a real implementation, this would use Ecdsa_der.of_bytes *)
@@ -123,9 +127,11 @@ let extract_signatures (script : Script.t) =
       | _ -> loop acc first_err rest
 =======
         (* Try to parse any push data as DER signature *)
+=======
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
         (match Der.of_bytes data with
-         | Ok parsed -> loop (parsed :: acc) rest
-         | Error _   -> loop acc rest)
+        | Ok parsed -> loop (parsed :: acc) rest
+        | Error _   -> loop acc rest)
       | _ -> loop acc rest
 >>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
   in
@@ -164,21 +170,24 @@ let extract_legacy (input_index : int) (script_sig : bytes) : (t, error) result 
 
 (* ------------------------------------------------------------------ SegWit input *)
 
+<<<<<<< HEAD
 (* For SegWit inputs, signatures are in the witness stack.
 <<<<<<< HEAD
    Scans ALL witness items (not just up to first non-signature) to handle
    multisig witnesses with an initial empty dummy item. *)
 =======
    Scan ALL witness items for valid DER signatures instead of stopping at the first non-signature. *)
+=======
+(* Scan every witness item: multisig stacks can contain non-signature items
+   before, between, or after DER signatures. *)
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
 let extract_witness_sigs witnesses =
-  let rec loop acc stack =
-    match stack with
+  let rec loop acc = function
     | [] -> List.rev acc
-    | w :: rest ->
-      (* Try to parse each witness item as DER signature *)
-      (match Der.of_bytes w with
-       | Ok parsed -> loop (parsed :: acc) rest
-       | Error _   -> loop acc rest)
+    | witness :: rest ->
+      match Der.of_bytes witness with
+      | Ok parsed -> loop (parsed :: acc) rest
+      | Error _ -> loop acc rest
   in
   loop [] witnesses
 

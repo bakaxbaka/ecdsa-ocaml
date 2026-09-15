@@ -23,6 +23,9 @@ let ok_exn lbl = function
 
 let is_error = function Error _ -> true | Ok _ -> false
 
+(* Strict DER signature for r = s = 1 followed by SIGHASH_ALL. *)
+let valid_signature = Bytes.of_string "\x30\x06\x02\x01\x01\x02\x01\x01\x01"
+
 (* ------------------------------------------------------------------ helpers *)
 
 let bytes_of_hex h =
@@ -45,12 +48,19 @@ let make_legacy_input ?(script_sig=Bytes.empty) () =
       txid = txid_of_hex "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
       vout = 0;
     };
+<<<<<<< HEAD
     script_sig;
     sequence = 0xFFFF_FFFF;
   }
 
 let make_output ?(script_pubkey=Bytes.empty) () =
   {
+=======
+    script_sig = Bytes.cat (Bytes.of_string "\x09") valid_signature;
+    sequence   = 0xFFFF_FFFF;
+  } in
+  let out : tx_output = {
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
     value = Int64.of_int 10000;
     script_pubkey;
   }
@@ -122,6 +132,14 @@ let test_legacy_public_key_extraction () =
   Alcotest.(check bytes) "public key matches" compressed_pubkey
     (Option.value sig_data.public_key ~default:Bytes.empty)
 
+let test_legacy_variable_length_push_extract () =
+  let tx = make_legacy_p2pkh_tx () in
+  let script_sig = Bytes.cat (Bytes.of_string "\x09") valid_signature in
+  let tx = { tx with inputs = [{ (List.hd tx.inputs) with script_sig }] } in
+  let result = ok_exn "variable length signature"
+    (Signature_extraction.extract_single tx 0) in
+  Alcotest.(check int) "signature extracted" 1 (List.length result.signatures)
+
 (* ------------------------------------------------------------------ SegWit input *)
 
 let make_segwit_tx ?(version=1) ?(lock_time=0) n_inputs n_outputs =
@@ -143,9 +161,19 @@ let make_segwit_tx ?(version=1) ?(lock_time=0) n_inputs n_outputs =
   in
   {
     version;
+<<<<<<< HEAD
     inputs  = List.init n_inputs make_input;
     outputs = List.init n_outputs make_output;
     witnesses = [];
+=======
+    inputs  = [inp];
+    outputs = [out];
+    witnesses = [
+      [ valid_signature;
+        Bytes.make 33 '\x02';
+      ];
+    ];
+>>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
     lock_time;
     segwit  = true;
   }
@@ -189,6 +217,19 @@ let test_segwit_no_witness () =
   | Error No_signature -> ()  (* Expected *)
   | _ -> Alcotest.fail "expected No_signature for empty witness"
 
+let test_segwit_scans_entire_witness_stack () =
+  let tx = make_segwit_p2wpkh_tx () in
+  let tx = { tx with witnesses = [[
+    Bytes.of_string "not a signature";
+    valid_signature;
+    Bytes.of_string "also not a signature";
+    valid_signature;
+  ]] } in
+  let result = ok_exn "witness signatures"
+    (Signature_extraction.extract_single tx 0) in
+  Alcotest.(check int) "all witness signatures extracted" 2
+    (List.length result.signatures)
+
 (* ------------------------------------------------------------------ empty transaction *)
 
 let test_empty_tx () =
@@ -213,10 +254,12 @@ let () =
       "extract P2PKH",           `Quick, test_legacy_p2pkh_extract;
       "extract_single",          `Quick, test_legacy_single_input;
       "out of bounds",           `Quick, test_legacy_out_of_bounds;
+      "variable-length push",    `Quick, test_legacy_variable_length_push_extract;
     ];
     "SegWit", [
       "extract P2WPKH",          `Quick, test_segwit_p2wpkh_extract;
       "no witness rejected",     `Quick, test_segwit_no_witness;
+      "scans entire witness",    `Quick, test_segwit_scans_entire_witness_stack;
     ];
     "edge cases", [
       "empty transaction",       `Quick, test_empty_tx;
