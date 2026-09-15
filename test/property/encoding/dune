@@ -1,0 +1,3 @@
+(executable
+ (name prop_encoding)
+ (libraries encoding qcheck qcheck-alcotest alcotest))
