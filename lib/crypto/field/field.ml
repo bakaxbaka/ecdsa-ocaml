@@ -48,7 +48,11 @@ module T = struct
         else s
       in
       if s = "" then Error "Empty hexadecimal string"
-      else Ok (of_z (Z.of_string ("0x" ^ s)))
+      else
+        let z = Z.of_string ("0x" ^ s) in
+        if Z.compare z modulus >= 0 then
+          Error "Value out of field range"
+        else Ok (of_z z)
     with _ -> Error "Invalid hexadecimal string"
 end
 

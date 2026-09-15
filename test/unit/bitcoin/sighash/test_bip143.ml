@@ -22,7 +22,7 @@ let ok_exn lbl = function
 
 let is_error = function Error _ -> true | Ok _ -> false
 
-(* ------------------------------------------------------------------ helpers *)
+
 
 (* Build a minimal SegWit transaction with n_inputs inputs and n_outputs outputs. *)
 let make_segwit_tx ?(version=1) ?(lock_time=0) n_inputs n_outputs =
@@ -92,8 +92,7 @@ let test_sighash_none () =
 
 let test_sighash_none_zeroes_other_sequences () =
   (* Two transactions identical except input 1 sequence differs.
-     With BIP143, hashSequence includes ALL input sequences (never zeroed).
-     Sequence differences DO affect the hash. *)
+     SIGHASH_NONE zeroes hashSequence, so the other sequence is ignored. *)
   let tx1 = make_segwit_tx 2 2 in
   let tx2 = { tx1 with
     inputs = List.mapi (fun i inp ->
@@ -103,7 +102,7 @@ let test_sighash_none_zeroes_other_sequences () =
   let value = Int64.of_int 10000 in
   let h1 = ok_exn "none_seq1" (Bip143.compute tx1 0 sc value sighash_none) in
   let h2 = ok_exn "none_seq2" (Bip143.compute tx2 0 sc value sighash_none) in
-  Alcotest.(check bool) "NONE: other input seq affects hash" false (Bytes.equal h1 h2)
+  Alcotest.(check bool) "NONE: other input sequence ignored" true (Bytes.equal h1 h2)
 
 (* ------------------------------------------------------------------ SIGHASH_SINGLE *)
 

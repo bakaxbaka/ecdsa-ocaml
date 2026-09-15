@@ -1,1 +1,6 @@
+(library
+ (name bitcoin)
+ (wrapped false)
+ (libraries common encoding bitcoin_tx sighash ecdsa_der))
+
 (dirs transaction script sighash address types)

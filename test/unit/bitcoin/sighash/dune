@@ -4,4 +4,4 @@
 
 (executable
  (name test_bip143)
- (libraries sighash bitcoin_tx alcotest))
+ (libraries sighash bitcoin_tx script_types alcotest))

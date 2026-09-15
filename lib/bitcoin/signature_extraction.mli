@@ -40,12 +40,12 @@
 type t = {
   input_index : int;
   (** Index of the input in the transaction *)
-  signatures  : Der.parsed list;
-  (** List of DER signatures (for multi-signature inputs) *)
+  signatures  : Z.t * Z.t * int list;
+  (* List of (r, s, sighash) tuples for signatures *)
   public_key  : bytes option;
   (** Extracted public key, if present *)
-  script_sig  : Script.t;
-  (** Parsed scriptSig for debugging/analysis *)
+  script_sig  : bytes;
+  (* Raw scriptSig bytes for debugging/analysis *)
 }
 
 (** Error types for signature extraction. *)
