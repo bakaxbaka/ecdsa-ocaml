@@ -1,0 +1,3 @@
+(library
+ (name scalar)
+ (libraries zarith common))

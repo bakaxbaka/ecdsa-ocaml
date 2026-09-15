@@ -1,0 +1,4 @@
+(library
+ (name curve)
+ (wrapped true)
+ (libraries zarith common field scalar))

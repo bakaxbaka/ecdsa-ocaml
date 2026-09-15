@@ -1,4 +1,1 @@
-(library
- (name crypto)
- (wrapped true)
- (libraries zarith common))
+(dirs field scalar curve ecdsa hash encoding)
