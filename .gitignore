@@ -4,3 +4,16 @@ ltm/runtime/*
 ltm/reports/*
 ltm/snapshots/*
 # --- /ltm-power ---
+@"
+_build/
+*.install
+*.merlin
+.env
+.env.*
+*.log
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+"@ | Set-Content -Path "D:\ecdsa-ocaml\.gitignore" -Encoding utf8
