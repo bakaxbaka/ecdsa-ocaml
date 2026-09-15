@@ -165,6 +165,15 @@ let test_verify_infinity_pubkey () =
   Alcotest.(check bool) "infinity pubkey fails" false
     (Verify.verify ~pubkey:Curve.Point.Infinity ~z sig_)
 
+let test_verify_off_curve_pubkey () =
+  let (_, z, sig_) = make_synthetic_vector ~d_int:7 ~k_int:13 ~z_int:12345 in
+  let off_curve_pubkey = Curve.Point.Point {
+    x = Field.of_z Z.zero;
+    y = Field.of_z Z.zero;
+  } in
+  Alcotest.(check bool) "off-curve pubkey fails" false
+    (Verify.verify ~pubkey:off_curve_pubkey ~z sig_)
+
 (* ------------------------------------------------------------------ verify_bytes *)
 
 let test_verify_bytes_32 () =
@@ -244,6 +253,7 @@ let () =
       "wrong message hash",   `Quick, test_verify_wrong_z;
       "wrong r component",    `Quick, test_verify_wrong_r;
       "infinity public key",  `Quick, test_verify_infinity_pubkey;
+      "off-curve public key", `Quick, test_verify_off_curve_pubkey;
       "d=1 k=2 (Q=G)",        `Quick, test_verify_d1_k2;
     ];
     "Verify.verify_bytes", [

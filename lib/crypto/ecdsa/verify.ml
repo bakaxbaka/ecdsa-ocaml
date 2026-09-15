@@ -27,6 +27,7 @@ let verify ~pubkey ~z (sig_ : Signature.t) =
   (* Public key must not be the point at infinity. *)
   match pubkey with
   | Curve.Point.Infinity -> false
+  | _ when not (Curve.Point.is_on_curve pubkey) -> false
   | _ ->
     let r = Signature.r sig_ in
     let s = Signature.s sig_ in
