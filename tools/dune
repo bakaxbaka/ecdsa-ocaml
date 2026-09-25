@@ -1,0 +1,7 @@
+(executable
+ (name dump_rsz)
+ (libraries bitcoin_tx script_types sighash ecdsa_der curve hash encoding))
+
+(executable
+ (name recover_reused)
+ (libraries analysis encoding curve zarith))
