@@ -1,0 +1,3 @@
+(executable
+ (name test_sig_analysis)
+ (libraries analysis curve field scalar zarith alcotest))

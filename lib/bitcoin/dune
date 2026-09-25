@@ -1,1 +1,7 @@
 (dirs transaction script sighash address types)
+
+(library
+ (name bitcoin)
+ (wrapped false)
+ (modules signature_extraction)
+ (libraries common bitcoin_tx script_types ecdsa_der))

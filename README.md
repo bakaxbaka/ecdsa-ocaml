@@ -81,3 +81,29 @@
 
   Rule: if you need a symbol from a layer ABOVE, the design is wrong.
   Move the symbol down.
+
+================================================================================
+                         SIGNATURE ANALYSIS PIPELINE
+================================================================================
+
+`tools/dump_rsz.exe RAWTX_DIR rsz_database.csv` indexes the `*.hex` files in
+`RAWTX_DIR`, then emits one CSV row per structurally valid DER signature.  The
+input files must be named `<display-txid>.hex`; this lets the tool resolve
+prevouts that are present in the same directory.  Its final `ecdsa_valid`
+column is the quality gate: only rows whose value is `true` have a computed
+signature hash verified against their extracted public key.
+
+The extractor supports P2PKH, P2SH, P2PK, native P2WPKH/P2WSH, and nested
+P2SH-P2WPKH/P2WSH where the parent transaction is available.  Rows that cannot
+resolve a prevout or script code remain in the output with an empty `z_hex` and
+a diagnostic `note`; they are not candidates for analysis.
+
+Run nonce-reuse recovery only on that verified output:
+
+    dune exec tools/recover_reused.exe -- rsz_database.csv
+
+Every reported key is independently checked by deriving `d * G` and comparing
+it to the public keys attached to both observations.  For a distributional
+check of `r` bits (never `s`, which may be low-S normalised), use:
+
+    octave --quiet --eval "addpath('tools/octave'); bit_bias('rsz_database.csv')"
