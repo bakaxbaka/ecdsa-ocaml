@@ -1,4 +1,3 @@
-```
 # Compiled and build artifacts
 *.cmi
 *.cmo
@@ -50,4 +49,3 @@ htmlcov/
 # OS generated files
 .DS_Store
 Thumbs.db
-```

@@ -107,3 +107,9 @@ it to the public keys attached to both observations.  For a distributional
 check of `r` bits (never `s`, which may be low-S normalised), use:
 
     octave --quiet --eval "addpath('tools/octave'); bit_bias('rsz_database.csv')"
+
+The bit-bias helper accepts both the historical nine-column analysis CSV and
+the current ten-column `dump_rsz` format. Its statistic is calibrated for
+Bernoulli(0.5) bit counts by comparing *twice* the raw statistic with a
+chi-square distribution. See [`ANALYSIS_REPORT.md`](ANALYSIS_REPORT.md) for
+the current dataset result and the outstanding independent-sighash checks.
