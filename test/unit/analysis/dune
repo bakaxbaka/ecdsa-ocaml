@@ -10,6 +10,6 @@
   analysis_signature
   analysis_nonce))
 
-(executable
+(test
  (name test_sig_analysis)
- (libraries analysis curve field scalar zarith alcotest))
+ (libraries analysis_signature curve field scalar zarith alcotest))

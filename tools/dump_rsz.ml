@@ -50,7 +50,9 @@ let pushes bytes =
 let signatures values = List.filter_map (fun value ->
     match Der.of_bytes value with
     | Error _ -> None
-    | Ok der -> Option.map (fun signature -> (der, signature)) (Signature.of_der der)) values
+    | Ok der -> (match Signature.of_der der with
+        | Ok signature -> Some (der, signature)
+        | Error _ -> None)) values
 
 let point_of_push = function
   | None -> None
@@ -69,7 +71,7 @@ let last_push bytes = match List.rev (pushes bytes) with value :: _ -> Some valu
 type prevout = { script : bytes; value : Int64.t }
 
 let add_transaction_outputs index txid (transaction : Types.transaction) =
-  List.iteri (fun vout output ->
+  List.iteri (fun vout (output : Types.tx_output) ->
       Hashtbl.replace index (txid, vout) { script = output.script_pubkey; value = output.value })
     transaction.outputs
 
@@ -83,10 +85,10 @@ let emit_signature channel ~txid ~input_index ~script_type ~der ~signature ~pubk
   in
   write_row channel [txid; string_of_int input_index; script_type;
                      string_of_int der.Der.sighash;
-                     Z.format "%064x" (Signature.r signature);
-                     Z.format "%064x" (Signature.s signature);
-                     Option.value_map z ~default:"" ~f:hex;
-                     Option.value_map pubkey ~default:"" ~f:Curve.Point.to_compressed;
+                     Z.format "%064x" (Scalar.to_z (Signature.r signature));
+                     Z.format "%064x" (Scalar.to_z (Signature.s signature));
+                     (match z with None -> "" | Some digest -> hex digest);
+                     (match pubkey with None -> "" | Some key -> Curve.Point.to_compressed key);
                      string_of_bool valid; note]
 
 let process_input channel index txid transaction input_index input =

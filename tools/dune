@@ -21,4 +21,4 @@
 
 (executable
  (name recover_reused)
- (libraries analysis analysis_signature encoding curve zarith))
+ (libraries analysis_signature encoding curve scalar zarith))

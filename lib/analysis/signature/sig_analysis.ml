@@ -100,7 +100,8 @@ let analyze_nonce_reuse (sigs : signature_record list) :
   (* Group signatures by r value *)
   let tbl = Hashtbl.create (List.length sigs) in
   List.iter (fun sig_ ->
-    let group = try Hashtbl.find tbl sig_.r with Not_found -> [] in
+    let group : signature_record list =
+      try Hashtbl.find tbl sig_.r with Not_found -> [] in
     Hashtbl.replace tbl sig_.r (sig_ :: group)
   ) sigs;
   
