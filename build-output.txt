@@ -1,0 +1,45 @@
+File "lib/crypto/hash/ripemd160.ml", line 39, characters 15-26:
+39 |       let b0 = Int.of_char (Bytes.get block offset) in
+                    ^^^^^^^^^^^
+Error: Unbound value "Int.of_char"
+File "lib/analysis/statistics/statistics.ml", line 126, characters 27-50:
+126 | let analyze_sig_forms (_ : Observation.observation list) : sig_form_stats =
+                                 ^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unbound module "Observation"
+File "lib/analysis/signature/sig_analysis.ml", line 132, characters 24-25:
+132 |   List.filter_map (fun (r, group) ->
+                              ^
+Error (warning 27 [unused-var-strict]): unused variable r.
+
+File "lib/analysis/signature/sig_analysis.ml", line 183, characters 4-20:
+183 | let analyze_z_values (sigs : signature_record list) :
+          ^^^^^^^^^^^^^^^^
+Error (warning 32 [unused-value-declaration]): unused value analyze_z_values.
+File "lib/analysis/nonce/nonce.ml", line 20, characters 5-16:
+20 | open Observation
+          ^^^^^^^^^^^
+Error: Unbound module "Observation"
+File "lib/analysis/analysis.mli", line 38, characters 2-30:
+38 |   Bitcoin_tx.Types.transaction ->
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unbound module "Bitcoin_tx"
+File "lib/analysis/signature/observation.ml", line 297, characters 4-26:
+297 | let compute_z_legacy_p2pkh (_tx : Types.transaction) (_input_index : int)
+          ^^^^^^^^^^^^^^^^^^^^^^
+Error (warning 32 [unused-value-declaration]): unused value compute_z_legacy_p2pkh.
+File "bin/analyze_tx_signatures.ml", line 34, characters 10-25:
+34 |     match Ecdsa_der.parse sig_bytes with
+               ^^^^^^^^^^^^^^^
+Error: Unbound module "Ecdsa_der"
+File "bin/analyse_txs.ml", line 129, characters 18-39:
+129 |     let results = Observation.build_all tx txid [] [] in
+                        ^^^^^^^^^^^^^^^^^^^^^
+Error: Unbound module "Observation"
+File "tools/dump_rsz.ml", line 74, characters 10-37:
+74 |     match Bitcoin_tx.Tx_parser.of_hex hex with
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Unbound module "Bitcoin_tx"
+File "bin/extract_vectors.ml", line 65, characters 18-39:
+65 |     let results = Observation.build_all tx txid [] [] in
+                       ^^^^^^^^^^^^^^^^^^^^^
+Error: Unbound module "Observation"
