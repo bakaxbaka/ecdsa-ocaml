@@ -1,136 +1,175 @@
-(* tools/dump_rsz.ml
-   Process .hex files → CSV with r, s, z_hex, script_type
-   
-   For legacy inputs: derives script_code from scriptSig (P2PKH/P2SH heuristics)
-   For SegWit inputs: z_hex = "" (prevout lookup needed for Bip143)
-   
-   Output format:
-   txid,input_index,prevout_txid,prevout_index,pubkey_hex,r_hex,s_hex,script_type,sighash_type,z_hex
-*)
+(* Produce verified r,s,z observations from a directory of raw transaction hex.
+   Usage: dump_rsz RAWTX_DIR OUTPUT.csv
 
-open Signature_extraction
+   Files are expected to be named <display-txid>.hex.  The directory is first
+   indexed so SegWit inputs can obtain the scriptPubKey and amount of parents
+   included in the same corpus. *)
 
-let read_file p =
-  let ic = open_in_bin p in
-  let n = in_channel_length ic in
-  let s = really_input_string ic n in
-  close_in ic; s
+let read_file path =
+  let channel = open_in path in
+  Fun.protect ~finally:(fun () -> close_in_noerr channel) (fun () ->
+      let length = in_channel_length channel in
+      really_input_string channel length |> String.trim)
 
-let rev_hex b =
-  let n = Bytes.length b in
-  let r = Bytes.create n in
-  for i = 0 to n - 1 do Bytes.set r i (Bytes.get b (n - 1 - i)) done;
-  Hex.of_bytes r
+let hex = Hex.of_bytes
+let z_of_bytes = Verify.z_of_bytes
+let p2pkh_script hash160 =
+  Bytes.concat Bytes.empty [Bytes.of_string "\x76\xa9\x14"; hash160;
+                           Bytes.of_string "\x88\xac"]
 
-let pushes_of (bs : bytes) : bytes list =
-  match Parser.of_bytes bs with
+let is_p2pkh script =
+  Bytes.length script = 25
+  && Bytes.get script 0 = '\x76' && Bytes.get script 1 = '\xa9'
+  && Bytes.get script 2 = '\x14' && Bytes.get script 23 = '\x88'
+  && Bytes.get script 24 = '\xac'
+
+let witness_program script =
+  let n = Bytes.length script in
+  if n = 22 && Bytes.get script 0 = '\x00' && Bytes.get script 1 = '\x14'
+  then Some (`Wpkh, Bytes.sub script 2 20)
+  else if n = 34 && Bytes.get script 0 = '\x00' && Bytes.get script 1 = '\x20'
+  then Some (`Wsh, Bytes.sub script 2 32)
+  else None
+
+let is_p2sh script =
+  Bytes.length script = 23 && Bytes.get script 0 = '\xa9'
+  && Bytes.get script 1 = '\x14' && Bytes.get script 22 = '\x87'
+
+let is_p2pk script =
+  let n = Bytes.length script in
+  n >= 2 && Bytes.get script (n - 1) = '\xac'
+  && let push = Char.code (Bytes.get script 0) in push + 2 = n
+
+let pushes bytes =
+  match Parser.of_bytes bytes with
   | Error _ -> []
-  | Ok instrs ->
-    List.filter_map (function
-      | Script.Push_data { data; _ } -> Some data
-      | _ -> None) instrs
+  | Ok instructions ->
+    List.filter_map (function Script.Push_data { data; _ } -> Some data | _ -> None)
+      instructions
 
-let is_curve_point (p : bytes) =
-  (Bytes.length p = 33 || Bytes.length p = 65) &&
-  (match Curve.Point.of_compressed (Hex.of_bytes p) with
-   | Ok _ -> true
-   | Error _ ->
-     (match Curve.Point.of_uncompressed (Hex.of_bytes p) with
-      | Ok _ -> true | Error _ -> false))
+let signatures values = List.filter_map (fun value ->
+    match Der.of_bytes value with
+    | Error _ -> None
+    | Ok der -> Option.map (fun signature -> (der, signature)) (Signature.of_der der)) values
 
-let p2pkh_sc (pk : bytes) : bytes =
-  let h160 = Bytes.of_string
-    Digestif.RMD160.(digest_bytes (Hash.sha256 pk) |> to_raw_string) in
-  let sc = Bytes.create 25 in
-  Bytes.set sc 0 '\x76'; Bytes.set sc 1 '\xa9'; Bytes.set sc 2 '\x14';
-  Bytes.blit h160 0 sc 3 20;
-  Bytes.set sc 23 '\x88'; Bytes.set sc 24 '\xac';
-  sc
+let point_of_push = function
+  | None -> None
+  | Some point when Bytes.length point = 33 ->
+    Result.to_option (Curve.Point.of_compressed (hex point))
+  | Some point when Bytes.length point = 65 ->
+    Result.to_option (Curve.Point.of_uncompressed (hex point))
+  | Some _ -> None
 
-(* Returns (script_code, script_type_string) *)
-let script_code_of_script_sig (ss : bytes) : bytes option * string =
-  let pushes = pushes_of ss in
-  match List.rev pushes with
-  | [] -> (None, "unknown")
-  | last :: _ when is_curve_point last ->
-    (* P2PKH (last push is the pubkey) *)
-    (Some (p2pkh_sc last), "P2PKH")
-  | [_last] ->
-    (* Single non-curve push — could be P2PK (unsupported), P2SH-P2WPKH (22 B),
-       P2SH-P2WSH (34 B). Only classify as P2SH if length matches known witness. *)
-    let n = Bytes.length (List.hd pushes) in
-    if n = 22 || n = 34 then (None, "P2SH-segwit-unsupported")
-    else (None, "P2PK-or-unknown")
-  | last :: _ ->
-    (* P2SH (last push is the redeemScript). Heuristic: >= 20 bytes. *)
-    if Bytes.length last >= 20 then (Some last, "P2SH")
-    else (None, "unknown")
+let first_public_key values =
+  values |> List.find_opt (fun item -> let n = Bytes.length item in n = 33 || n = 65)
+  |> point_of_push
 
-let process_tx oc path =
-  let base = Filename.basename path in
-  let txid = Filename.chop_suffix base ".hex" in
-  try
-    let hex = read_file path in
-    match Tx_parser.of_hex hex with
-    | Error e -> Printf.eprintf "%s: %s\n" base (Common.Parse_error.to_string e)
-    | Ok tx ->
-      let n_in = List.length tx.inputs in
-      for i = 0 to n_in - 1 do
-        let inp = List.nth tx.inputs i in
-        let prev_txid = rev_hex inp.previous_output.txid in
-        let prev_idx = inp.previous_output.vout in
-        (* Script code from scriptSig (legacy inputs only) *)
-        let sc_opt, stype = script_code_of_script_sig inp.script_sig in
-        match Signature_extraction.extract_single tx i with
-        | Error _ -> ()
-        | Ok ex ->
-          (match ex.signatures with
-           | [] -> ()
-           | sigs ->
-             let pubkey_hex = match ex.public_key with
-               | None -> ""
-               | Some b -> Hex.of_bytes b
-             in
-             List.iter (fun psig ->
-               let z_hex =
-                 match sc_opt with
-                 | None -> ""
-                 | Some sc ->
-                   (match Legacy.compute tx i sc psig.sighash with
-                    | Ok h -> Hex.of_bytes h
-                    | Error _ -> "")
-               in
-               Printf.fprintf oc "%s,%d,%s,%d,%s,%s,%s,%s,%02x,%s\n"
-                 txid i prev_txid prev_idx
-                 pubkey_hex
-                 (Z.format "%064x" psig.r)
-                 (Z.format "%064x" psig.s)
-                 stype
-                 psig.sighash
-                 z_hex)
-             sigs)
-      done
-  with e -> Printf.eprintf "%s: %s\n" base (Printexc.to_string e)
+let last_push bytes = match List.rev (pushes bytes) with value :: _ -> Some value | [] -> None
+
+type prevout = { script : bytes; value : Int64.t }
+
+let add_transaction_outputs index txid (transaction : Types.transaction) =
+  List.iteri (fun vout output ->
+      Hashtbl.replace index (txid, vout) { script = output.script_pubkey; value = output.value })
+    transaction.outputs
+
+let write_row channel fields =
+  output_string channel (String.concat "," fields ^ "\n")
+
+let emit_signature channel ~txid ~input_index ~script_type ~der ~signature ~pubkey ~z ~note =
+  let valid = match pubkey, z with
+    | Some public_key, Some digest -> Verify.verify_bytes ~pubkey:public_key ~hash_bytes:digest signature
+    | _ -> false
+  in
+  write_row channel [txid; string_of_int input_index; script_type;
+                     string_of_int der.Der.sighash;
+                     Z.format "%064x" (Signature.r signature);
+                     Z.format "%064x" (Signature.s signature);
+                     Option.value_map z ~default:"" ~f:hex;
+                     Option.value_map pubkey ~default:"" ~f:Curve.Point.to_compressed;
+                     string_of_bool valid; note]
+
+let process_input channel index txid transaction input_index input =
+  let previous = Hashtbl.find_opt index
+      (Types.txid_to_display_hex input.Types.previous_output.txid, input.Types.previous_output.vout) in
+  let witness = if transaction.Types.segwit then
+      Option.value ~default:[] (List.nth_opt transaction.Types.witnesses input_index) else [] in
+  let values = if transaction.Types.segwit then witness else pushes input.Types.script_sig in
+  let signatures = signatures values in
+  let prev_script = Option.map (fun output -> output.script) previous in
+  let script_type, script_code, amount, public_key, note =
+    match prev_script with
+    | Some script when is_p2pkh script ->
+      ("p2pkh", Some script, None, first_public_key values, "")
+    | Some script when is_p2sh script ->
+      let redeem = last_push input.Types.script_sig in
+      (match redeem with
+       | Some redeem_script ->
+         (match witness_program redeem_script with
+          | Some (`Wpkh, hash160) ->
+            ("p2sh-p2wpkh", Some (p2pkh_script hash160),
+             Option.map (fun x -> x.value) previous, first_public_key values, "")
+          | Some (`Wsh, _) ->
+            let witness_script = match List.rev witness with item :: _ -> Some item | [] -> None in
+            ("p2sh-p2wsh", witness_script, Option.map (fun x -> x.value) previous,
+             first_public_key (List.rev witness),
+             if Option.is_some witness_script then "" else "missing_witness_script")
+          | None -> ("p2sh", Some redeem_script, None, first_public_key values, ""))
+       | None -> ("p2sh", None, None, first_public_key values, "missing_redeem_script"))
+    | Some script ->
+      (match witness_program script with
+       | Some (`Wpkh, hash160) ->
+         ("p2wpkh", Some (p2pkh_script hash160), Option.map (fun x -> x.value) previous,
+          first_public_key values, "")
+       | Some (`Wsh, _) ->
+         let witness_script = match List.rev witness with item :: _ -> Some item | [] -> None in
+         ("p2wsh", witness_script, Option.map (fun x -> x.value) previous,
+          first_public_key (List.rev witness),
+          if Option.is_some witness_script then "" else "missing_witness_script")
+       | None when is_p2pk script ->
+         let key = if Bytes.length script = 35 || Bytes.length script = 67
+                   then Bytes.sub script 1 (Bytes.length script - 2) else Bytes.empty in
+         ("p2pk", Some script, None, point_of_push (Some key), "")
+       | None -> ("unknown", None, None, first_public_key values, "unsupported_prevout_script"))
+    | None -> ("unknown", None, None, first_public_key values, "missing_prevout")
+  in
+  List.iter (fun (der, signature) ->
+      let z, computation_note = match script_code with
+        | None -> (None, note)
+        | Some code ->
+          (match amount with
+           | Some value ->
+             (match Bip143.compute transaction input_index code value der.Der.sighash with
+              | Ok digest -> (Some digest, note) | Error _ -> (None, "invalid_sighash"))
+           | None ->
+             (match Legacy.compute transaction input_index code der.Der.sighash with
+              | Ok digest -> (Some digest, note) | Error _ -> (None, "invalid_sighash")))
+      in
+      emit_signature channel ~txid ~input_index ~script_type ~der ~signature ~pubkey:public_key
+        ~z ~note:computation_note) signatures
+
+let hex_files directory =
+  Sys.readdir directory |> Array.to_list |> List.filter (Filename.check_suffix ".hex") |> List.sort String.compare
 
 let () =
-  if Array.length Sys.argv < 3 then begin
-    Printf.eprintf "usage: %s <input_dir> <output.csv>\n" Sys.argv.(0);
-    exit 1
+  if Array.length Sys.argv <> 3 then begin
+    prerr_endline "usage: dump_rsz RAWTX_DIR OUTPUT.csv"; exit 2
   end;
-  let dir = Sys.argv.(1) and out = Sys.argv.(2) in
-  let oc = open_out out in
-  output_string oc
-    "txid,input_index,prevout_txid,prevout_index,pubkey_hex,r_hex,s_hex,script_type,sighash_type,z_hex\n";
-  let files = Sys.readdir dir in
-  Array.sort compare files;
-  let processed = ref 0 in
-  Array.iter (fun f ->
-    if Filename.check_suffix f ".hex" then begin
-      process_tx oc (Filename.concat dir f);
-      incr processed;
-      if !processed mod 500 = 0 then
-        Printf.eprintf "  %d files processed\n" !processed
-    end
-  ) files;
-  Printf.eprintf "  %d files total\n" !processed;
-  close_out oc
+  let directory, output = Sys.argv.(1), Sys.argv.(2) in
+  let files = hex_files directory in
+  let index = Hashtbl.create (max 16 (List.length files * 2)) in
+  List.iter (fun file ->
+      let txid = Filename.chop_suffix file ".hex" in
+      match Tx_parser.of_hex (read_file (Filename.concat directory file)) with
+      | Ok transaction -> add_transaction_outputs index txid transaction
+      | Error _ -> ()) files;
+  let channel = open_out output in
+  Fun.protect ~finally:(fun () -> close_out_noerr channel) (fun () ->
+      write_row channel ["txid"; "input_index"; "script_type"; "sighash_type";
+                         "r_hex"; "s_hex"; "z_hex"; "pubkey_hex"; "ecdsa_valid"; "note"];
+      List.iter (fun file ->
+          let txid = Filename.chop_suffix file ".hex" in
+          match Tx_parser.of_hex (read_file (Filename.concat directory file)) with
+          | Error _ -> ()
+          | Ok transaction -> List.iteri (process_input channel index txid transaction) transaction.Types.inputs)
+        files)

@@ -1,6 +1,7 @@
 (library
  (name bitcoin)
  (wrapped false)
+ (modules signature_extraction)
  (libraries common encoding bitcoin_tx sighash ecdsa_der script_types))
 
 (dirs transaction script sighash)

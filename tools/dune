@@ -18,3 +18,7 @@
   sighash
   bitcoin
   analysis_signature))
+
+(executable
+ (name recover_reused)
+ (libraries analysis analysis_signature encoding curve zarith))

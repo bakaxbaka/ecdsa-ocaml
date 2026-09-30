@@ -30,3 +30,12 @@ val verify : pubkey:Curve.Point.t -> z:Z.t -> Signature.t -> bool
     big-endian integer and calls {!verify}.  [hash_bytes] must be 32 bytes;
     returns [false] for any other length. *)
 val verify_bytes : pubkey:Curve.Point.t -> hash_bytes:bytes -> Signature.t -> bool
+
+(** [z_of_bytes b] interprets [b] as a big-endian unsigned integer.
+
+    Exported because callers in the layers above need to turn a sighash digest
+    into the scalar [z] that {!verify} takes. Making them do that conversion
+    themselves means re-implementing a byte-order decision that is easy to get
+    wrong: the same conversion written little-endian silently reverses every hash
+    while still producing a plausible number. *)
+val z_of_bytes : bytes -> Z.t

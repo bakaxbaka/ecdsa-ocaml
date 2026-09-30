@@ -1,5 +1,5 @@
-(test
- (name test_nonce_analysis)
+(tests
+ (names test_nonce_analysis)
  (flags
   (:standard -w -32-33))
  (libraries
@@ -9,3 +9,7 @@
   analysis
   analysis_signature
   analysis_nonce))
+
+(executable
+ (name test_sig_analysis)
+ (libraries analysis curve field scalar zarith alcotest))
