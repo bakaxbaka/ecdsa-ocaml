@@ -1,0 +1,20 @@
+(executables
+ (names dump_rsz scan_dir)
+ (flags
+  (:standard -w -32-33))
+ (libraries
+  zarith
+  digestif
+  yojson
+  common
+  encoding
+  hash
+  field
+  scalar
+  curve
+  ecdsa_der
+  script_types
+  bitcoin_tx
+  sighash
+  bitcoin
+  analysis_signature))

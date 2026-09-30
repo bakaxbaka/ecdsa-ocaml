@@ -49,7 +49,7 @@ let genesis_coinbase_hex =
   "00000000"                               (* locktime: 0 *)
 
 let test_genesis_coinbase () =
-  let tx = ok_exn "genesis_coinbase" (Parser.of_hex genesis_coinbase_hex) in
+  let tx = ok_exn "genesis_coinbase" (Tx_parser.of_hex genesis_coinbase_hex) in
 
   Alcotest.(check int) "version" 1 tx.version;
   Alcotest.(check bool) "not segwit" false tx.segwit;
@@ -123,7 +123,7 @@ let make_legacy_tx () =
   hex_of_string (build_u32_le 0)              (* locktime *)
 
 let test_legacy_synthetic () =
-  let tx = ok_exn "legacy_synthetic" (Parser.of_hex (make_legacy_tx ())) in
+  let tx = ok_exn "legacy_synthetic" (Tx_parser.of_hex (make_legacy_tx ())) in
   Alcotest.(check int)  "version"   1 tx.version;
   Alcotest.(check bool) "not segwit" false tx.segwit;
   Alcotest.(check int)  "1 input"   1 (List.length tx.inputs);
@@ -162,7 +162,7 @@ let make_segwit_tx () =
   hex_of_string (build_u32_le 0)               (* locktime *)
 
 let test_segwit_synthetic () =
-  let tx = ok_exn "segwit_synthetic" (Parser.of_hex (make_segwit_tx ())) in
+  let tx = ok_exn "segwit_synthetic" (Tx_parser.of_hex (make_segwit_tx ())) in
   Alcotest.(check int)  "version"   1 tx.version;
   Alcotest.(check bool) "is segwit" true tx.segwit;
   Alcotest.(check int)  "1 input"   1 (List.length tx.inputs);
@@ -183,11 +183,11 @@ let test_segwit_synthetic () =
 let test_truncated () =
   (* Version only: 4 bytes, then nothing *)
   let hex = "01000000" in
-  Alcotest.(check bool) "truncated" true (is_error (Parser.of_hex hex))
+  Alcotest.(check bool) "truncated" true (is_error (Tx_parser.of_hex hex))
 
 let test_trailing_data () =
   let tx_hex = genesis_coinbase_hex ^ "ff" in  (* one extra byte *)
-  Alcotest.(check bool) "trailing data" true (is_error (Parser.of_hex tx_hex))
+  Alcotest.(check bool) "trailing data" true (is_error (Tx_parser.of_hex tx_hex))
 
 let test_non_canonical_compact_size () =
   (* Build a tx where vin_count uses 0xFD 0x01 0x00 = value 1, but 1 fits in a byte. *)
@@ -196,7 +196,7 @@ let test_non_canonical_compact_size () =
     "fd0100" ^                         (* non-canonical CompactSize for 1 *)
     "00"                               (* (truncated after, but non-canonical fires first) *)
   in
-  match Parser.of_hex bad_count with
+  match Tx_parser.of_hex bad_count with
   | Error (Common.Parse_error.Non_canonical _) -> ()
   | Error e -> Alcotest.failf "expected Non_canonical, got: %s"
                  (Common.Parse_error.to_string e)
@@ -217,7 +217,7 @@ let test_negative_output_value () =
     hex_of_string (build_u32_le 0)     (* locktime *)
   in
   Alcotest.(check bool) "negative value rejected" true
-    (is_error (Parser.of_hex neg_value_hex))
+    (is_error (Tx_parser.of_hex neg_value_hex))
 
 let test_unknown_segwit_flag () =
   (* marker=0x00 flag=0x02 — unknown flag, must be rejected *)
@@ -227,7 +227,7 @@ let test_unknown_segwit_flag () =
     "02" ^                            (* flag: unknown *)
     "00"                              (* (truncated, but flag check fires first) *)
   in
-  match Parser.of_hex bad_flag with
+  match Tx_parser.of_hex bad_flag with
   | Error (Common.Parse_error.Non_canonical _) -> ()
   | Error e -> Alcotest.failf "expected Non_canonical for bad flag, got: %s"
                  (Common.Parse_error.to_string e)
@@ -271,7 +271,7 @@ let test_compact_size_252 () =
     "00"                                      ^
     hex_of_string (build_u32_le 0)
   in
-  let tx = ok_exn "cs_252" (Parser.of_hex tx_hex) in
+  let tx = ok_exn "cs_252" (Tx_parser.of_hex tx_hex) in
   Alcotest.(check int) "scriptSig 252 bytes" 252
     (Bytes.length (List.nth tx.inputs 0).script_sig)
 
@@ -291,7 +291,7 @@ let test_compact_size_253 () =
     "00"                                      ^
     hex_of_string (build_u32_le 0)
   in
-  let tx = ok_exn "cs_253" (Parser.of_hex tx_hex) in
+  let tx = ok_exn "cs_253" (Tx_parser.of_hex tx_hex) in
   Alcotest.(check int) "scriptSig 253 bytes" 253
     (Bytes.length (List.nth tx.inputs 0).script_sig)
 
@@ -302,7 +302,7 @@ let test_compact_size_252_as_fd_rejected () =
     "fdfc00" ^   (* non-canonical: 252 using 3-byte form *)
     "00"         (* truncated, but non-canonical fires first *)
   in
-  match Parser.of_hex bad with
+  match Tx_parser.of_hex bad with
   | Error (Common.Parse_error.Non_canonical _) -> ()
   | Error e -> Alcotest.failf "expected Non_canonical, got: %s"
                  (Common.Parse_error.to_string e)
@@ -316,7 +316,7 @@ let test_compact_size_65535_as_fe_rejected () =
     "feffff0000" ^   (* 0xFE 0xFF 0xFF 0x00 0x00 = 65535 LE: non-canonical *)
     "00"
   in
-  match Parser.of_hex bad with
+  match Tx_parser.of_hex bad with
   | Error (Common.Parse_error.Non_canonical _) -> ()
   | Error e -> Alcotest.failf "expected Non_canonical, got: %s"
                  (Common.Parse_error.to_string e)
@@ -332,43 +332,43 @@ let full_tx_hex = genesis_coinbase_hex
 
 let test_truncate_at_version () =
   Alcotest.(check bool) "truncated at version byte 2" true
-    (is_error (Parser.of_hex (truncate_at 2 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 2 full_tx_hex)))
 
 let test_truncate_at_vin_count () =
   (* 4 bytes version, then cut before vin_count *)
   Alcotest.(check bool) "truncated before vin_count" true
-    (is_error (Parser.of_hex (truncate_at 4 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 4 full_tx_hex)))
 
 let test_truncate_mid_txid () =
   (* version(4) + vin_count(1) + 10 bytes of txid = 15 bytes *)
   Alcotest.(check bool) "truncated mid-txid" true
-    (is_error (Parser.of_hex (truncate_at 15 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 15 full_tx_hex)))
 
 let test_truncate_at_vout () =
   (* version(4) + vin_count(1) + txid(32) + truncate 2 bytes into vout = 39 *)
   Alcotest.(check bool) "truncated mid-vout" true
-    (is_error (Parser.of_hex (truncate_at 39 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 39 full_tx_hex)))
 
 let test_truncate_mid_script_sig () =
   (* version(4)+vin(1)+txid(32)+vout(4)+script_len(1) = 42, then cut mid-script *)
   Alcotest.(check bool) "truncated mid-scriptSig" true
-    (is_error (Parser.of_hex (truncate_at 50 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 50 full_tx_hex)))
 
 let test_truncate_at_sequence () =
   (* Cut 2 bytes into sequence field: offset 4+1+32+4+1+77 = 119, then +2 *)
   Alcotest.(check bool) "truncated mid-sequence" true
-    (is_error (Parser.of_hex (truncate_at 121 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 121 full_tx_hex)))
 
 let test_truncate_mid_value () =
   (* version+vin_count+input = 4+1+32+4+1+77+4 = 123, vout_count = 124,
      then cut 3 bytes into value field: 127 *)
   Alcotest.(check bool) "truncated mid-value" true
-    (is_error (Parser.of_hex (truncate_at 127 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 127 full_tx_hex)))
 
 let test_truncate_at_locktime () =
   (* Full tx is 204 bytes; cut 2 bytes into locktime = 202 *)
   Alcotest.(check bool) "truncated mid-locktime" true
-    (is_error (Parser.of_hex (truncate_at 202 full_tx_hex)))
+    (is_error (Tx_parser.of_hex (truncate_at 202 full_tx_hex)))
 
 (* ------------------------------------------------------------------ SegWit specifics *)
 
@@ -391,7 +391,7 @@ let test_segwit_empty_witness_stack () =
     "00" ^                                       (* witness: 0 items in stack *)
     hex_of_string (build_u32_le 0)               (* locktime *)
   in
-  let tx = ok_exn "segwit_empty_witness" (Parser.of_hex tx_hex) in
+  let tx = ok_exn "segwit_empty_witness" (Tx_parser.of_hex tx_hex) in
   Alcotest.(check bool) "is segwit" true tx.segwit;
   Alcotest.(check int) "1 witness stack" 1 (List.length tx.witnesses);
   Alcotest.(check int) "0 items in stack" 0 (List.length (List.nth tx.witnesses 0))
@@ -420,7 +420,7 @@ let test_segwit_multiple_witness_items () =
     hex_of_string item2                       ^
     hex_of_string (build_u32_le 0)               (* locktime *)
   in
-  let tx = ok_exn "segwit_multi_witness" (Parser.of_hex tx_hex) in
+  let tx = ok_exn "segwit_multi_witness" (Tx_parser.of_hex tx_hex) in
   Alcotest.(check int) "version 2" 2 tx.version;
   Alcotest.(check bool) "is segwit" true tx.segwit;
   let stack = List.nth tx.witnesses 0 in
@@ -438,7 +438,7 @@ let test_segwit_flag_zero_rejected () =
   in
   (* flag=0x00: the parser sees marker=0x00 and then flag=0x00.  Since
      flag must be >= 0x01 for SegWit, this should be rejected. *)
-  Alcotest.(check bool) "flag=00 rejected" true (is_error (Parser.of_hex bad))
+  Alcotest.(check bool) "flag=00 rejected" true (is_error (Tx_parser.of_hex bad))
 
 (* ------------------------------------------------------------------ Pathological count *)
 
@@ -451,7 +451,7 @@ let test_pathological_vin_count () =
     ""          (* no input data *)
   in
   Alcotest.(check bool) "pathological count truncates" true
-    (is_error (Parser.of_hex bad))
+    (is_error (Tx_parser.of_hex bad))
 
 (* ------------------------------------------------------------------ main *)
 

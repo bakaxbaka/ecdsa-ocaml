@@ -1,19 +1,20 @@
 (* lib/bitcoin/signature_extraction.ml
    Bitcoin transaction signature extraction.
 
-   Parses transaction inputs to extract ECDSA signatures from scriptSigs.
-   Handles both legacy and SegWit inputs.
+   Parses transaction inputs to extract ECDSA signatures from scriptSigs
+   (legacy) and witness stacks (SegWit).
 
    {1 Extraction workflow}
 
    For legacy inputs:
    - Parse scriptSig using {!Script.Parser.of_bytes}
-   - Scan all push-data instructions and attempt strict DER parsing
+   - Scan ALL push-data instructions for strict DER-encoded signatures
    - Extract public key if present (OP_DATA_33/65 followed by 33/65 bytes)
 
    For SegWit inputs:
    - Signatures are in the witness stack (not in scriptSig)
-   - Scan all witness items and attempt strict DER parsing
+   - Scan ALL witness stack items for valid DER signatures
+   - Handles multisig with dummy elements and non-signature items
 
    {1 Malformed candidate policy}
 
@@ -29,17 +30,26 @@
    - {e No_public_key}: Input has no public key (for P2PKH)
 *)
 
-open Script
+open Types
+open Der
 
-type t = {
-  input_index : int;
-  (* Index of the input in the transaction *)
-  signatures  : Z.t * Z.t * int list;
-  (* List of (r, s, sighash) tuples for signatures *)
-  public_key  : bytes option;
-  (* Extracted public key, if present *)
-  script_sig  : bytes;
-  (* Raw scriptSig bytes for debugging/analysis *)
+(* ------------------------------------------------------------------ types *)
+
+(* Re-export Der.parsed under the mli-declared name parsed_sig so callers
+   do not need to depend on the Der module directly. *)
+type parsed_sig = {
+  r       : Z.t;
+  s       : Z.t;
+  sighash : int;
+}
+
+type signature_extraction_result = {
+  input_index       : int;
+  signatures        : parsed_sig list;
+  public_key        : bytes option;
+  script_sig        : bytes;
+  witness_index     : int option;
+  script_push_index : int list;
 }
 
 type error =
@@ -53,91 +63,76 @@ let error_to_string = function
   | Invalid_der e    -> Printf.sprintf "DER parse error: %s" (Common.Der_error.to_string e)
   | No_signature     -> "No signature found in scriptSig"
   | No_public_key    -> "No public key found in scriptSig"
-  | Invalid_script e -> Printf.sprintf "Script parse error: %s" (Common.Parse_error.to_string e)
-  | Invalid_der e    -> Printf.sprintf "DER parse error: %s" (Common.Der_error.to_string e)
-  | No_signature     -> "No signature found in scriptSig"
-  | No_public_key    -> "No public key found in scriptSig"
+
+(* Convert Der.parsed to our public parsed_sig type *)
+let parsed_sig_of_der (d : Der.parsed) : parsed_sig =
+  { r = d.r; s = d.s; sighash = d.sighash }
 
 (* ------------------------------------------------------------------ helpers *)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 (* Check if bytes could be a signature candidate (has valid sighash byte) *)
 let is_signature_candidate (data : bytes) =
   let len = Bytes.length data in
-  if len < 8 then false  (* minimum: 2+2+2+1+1 = 8 bytes for DER + sighash *)
+  if len < 8 then false
   else
-    (* DER format: 0x30 <len> 0x02 <r_len> <r> 0x02 <s_len> <s> <sighash> *)
     let sighash = Char.code (Bytes.get data (len - 1)) in
-    (* sighash must be a valid sighash type *)
     match sighash with
     | 0x01 | 0x02 | 0x03 | 0x81 | 0x82 | 0x83 -> true
     | _ -> false
-=======
-(* Check if an instruction is a DER-encoded signature.
-   Accept any valid push data that could be a DER signature (typically 70-73 bytes).
-   We check for OP_PUSHDATA opcodes and reasonable lengths rather than hardcoding. *)
-let is_der_signature instr =
-  match instr with
-  | Script.Push_data { opcode; data } ->
-    (* DER signatures have a minimum length and reasonable maximum.
-       The opcode indicates the push length. Accept all standard push opcodes. *)
-    let len = Bytes.length data in
-    (* Valid DER signatures are at least ~8 bytes and at most ~73 bytes plus sighash *)
-    len >= 8 && len <= 74 && opcode >= 0x01 && opcode <= 0x4b
-  | _ -> false
->>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
 
-=======
->>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
 (* Check if an instruction is a public key push *)
 let is_public_key instr =
   match instr with
   | Script.Push_data { opcode; data } ->
-    (* Compressed public keys are 33 bytes (opcode 0x21)
-       Uncompressed are 65 bytes (opcode 0x41) *)
     let len = Bytes.length data in
     (len = 33 && opcode = 0x21) ||
     (len = 65 && opcode = 0x41)
   | _ -> false
 
-<<<<<<< HEAD
-(* Extract signatures from parsed script instructions, scanning all push payloads.
-   Returns (signatures, first_der_error) where first_der_error is the first
-   Invalid_der error encountered if any. *)
-=======
-(* Extract signatures from parsed script instructions.
-   Try to parse each push data item as DER, collecting all valid signatures. *)
->>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
-let extract_signatures (script : Script.t) =
-  let rec loop acc first_err instrs =
+(* ------------------------------------------------------------------ legacy input extraction *)
+
+(* Extract all push data items from parsed script instructions.
+   Returns list of (data, push_index) pairs for ALL pushes. *)
+let extract_all_pushes (script : Script.t) : (bytes * int) list =
+  let rec loop acc instrs idx =
     match instrs with
-    | [] -> (List.rev acc, first_err)
+    | [] -> List.rev acc
     | i :: rest ->
       match i with
-      | Script.Push_data { data; _ } ->
-<<<<<<< HEAD
-<<<<<<< HEAD
+      | Script.Push_data { data; _ } -> loop ((data, idx) :: acc) rest (idx + 1)
+      | _ -> loop acc rest (idx + 1)
+  in
+  loop [] script 0
+
+(* Try to parse a push item as DER signature. Returns (parsed_sig, index) if valid. *)
+let try_parse_der push =
+  let (data, push_index) = push in
+  match Der.of_bytes data with
+  | Ok parsed -> Some (parsed_sig_of_der parsed, push_index)
+  | Error _   -> None
+
+(* Extract signatures from parsed script instructions, scanning ALL push payloads.
+   Returns (signatures_with_indices, first_der_error). *)
+let extract_signatures script =
+  let all_pushes = extract_all_pushes script in
+  let rec loop acc first_err pushes =
+    match pushes with
+    | [] -> (List.rev acc, first_err)
+    | push :: rest ->
+      match try_parse_der push with
+      | Some (parsed, idx) -> loop ((parsed, idx) :: acc) first_err rest
+      | None ->
+        let (data, _) = push in
         if is_signature_candidate data then
-          (* For simplicity, skip strict DER parsing for now *)
-          (* In a real implementation, this would use Ecdsa_der.of_bytes *)
-          loop (data :: acc) first_err rest
+          match Der.of_bytes data with
+          | Ok _ -> loop acc first_err rest
+          | Error err -> loop acc (Some (Invalid_der err)) rest
         else
           loop acc first_err rest
-      | _ -> loop acc first_err rest
-=======
-        (* Try to parse any push data as DER signature *)
-=======
->>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
-        (match Der.of_bytes data with
-        | Ok parsed -> loop (parsed :: acc) rest
-        | Error _   -> loop acc rest)
-      | _ -> loop acc rest
->>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
   in
-  loop [] None script
+  loop [] None all_pushes
 
-(* Extract public key from parsed script instructions, independent of signatures *)
+(* Extract public key from parsed script instructions *)
 let extract_public_key script =
   match List.find_opt is_public_key script with
   | Some (Script.Push_data { data; _ }) -> Some data
@@ -145,146 +140,129 @@ let extract_public_key script =
 
 (* ------------------------------------------------------------------ legacy input *)
 
-(* Parse a legacy input's scriptSig and extract signatures and public key.
-   Returns Invalid_der if a candidate signature fails strict DER parsing,
-   even if other signatures succeed. *)
-let extract_legacy (input_index : int) (script_sig : bytes) : (t, error) result =
-  match Script.Parser.of_bytes script_sig with
+let extract_legacy (input_index : int) (script_sig : bytes) :
+    (signature_extraction_result, error) result =
+  match Parser.of_bytes script_sig with
   | Error e -> Error (Invalid_script e)
   | Ok script ->
-    let (signatures, der_error) = extract_signatures script in
+    let (signatures_with_indices, der_error) = extract_signatures script in
     match der_error with
     | Some err -> Error err
     | None ->
-      if signatures = [] then
+      if signatures_with_indices = [] then
         Error No_signature
       else begin
+        let signatures = List.map fst signatures_with_indices in
+        let push_indices = List.map snd signatures_with_indices in
         let public_key = extract_public_key script in
         Ok {
           input_index;
           signatures;
           public_key;
           script_sig;
+          witness_index = None;
+          script_push_index = push_indices;
         }
       end
 
-(* ------------------------------------------------------------------ SegWit input *)
+(* ------------------------------------------------------------------ SegWit input extraction *)
 
-<<<<<<< HEAD
-(* For SegWit inputs, signatures are in the witness stack.
-<<<<<<< HEAD
-   Scans ALL witness items (not just up to first non-signature) to handle
-   multisig witnesses with an initial empty dummy item. *)
-=======
-   Scan ALL witness items for valid DER signatures instead of stopping at the first non-signature. *)
-=======
-(* Scan every witness item: multisig stacks can contain non-signature items
-   before, between, or after DER signatures. *)
->>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
-let extract_witness_sigs witnesses =
-  let rec loop acc = function
-    | [] -> List.rev acc
+let extract_witness_sigs (witness_stack : bytes list) :
+    (parsed_sig * int) list * (Common.Der_error.t) option =
+  let rec loop acc first_err witnesses idx =
+    match witnesses with
+    | [] -> (List.rev acc, first_err)
     | witness :: rest ->
       match Der.of_bytes witness with
-      | Ok parsed -> loop (parsed :: acc) rest
-      | Error _ -> loop acc rest
+      | Ok parsed -> loop ((parsed_sig_of_der parsed, idx) :: acc) first_err rest (idx + 1)
+      | Error err ->
+        if is_signature_candidate witness then
+          loop acc (Some err) rest (idx + 1)
+        else
+          loop acc first_err rest (idx + 1)
   in
-  loop [] witnesses
+  loop [] None witness_stack 0
 
-(* For SegWit inputs, signatures are in the witness stack *)
->>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
+let extract_witness_public_key witness_stack =
+  match List.filter (fun w -> Bytes.length w > 0) (List.rev witness_stack) with
+  | pk :: _ when Bytes.length pk = 33 || Bytes.length pk = 65 -> Some pk
+  | _ -> None
+
+(* ------------------------------------------------------------------ SegWit input *)
+
+(* Note: script_pubkey is accepted but not used for extraction here —
+   it is passed by callers for context and future script_code derivation. *)
 let extract_segwit
     (input_index : int)
     (witness_stack : bytes list)
-    (script_pubkey : bytes)
-  : (t, error) result =
+    (_script_pubkey : bytes)
+  : (signature_extraction_result, error) result =
   if witness_stack = [] then
     Error No_signature
   else begin
-    (* In SegWit, the witness stack contains: [signature..., final_witness, scriptCode]
-       For P2WPKH: [signature, public_key]
-       For P2WSH: [witness script, ..., final_witness]
-
-<<<<<<< HEAD
-       We scan ALL items, not just up to the first non-signature, because
-       multisig inputs commonly have an initial empty dummy item. *)
-
-    (* Extract signatures from witness stack, scanning all items *)
-    let rec extract_witness_sigs acc witnesses =
-      match witnesses with
-      | [] -> List.rev acc
-      | w :: rest ->
-        (* For simplicity, we collect bytes - real DER parsing would go here *)
-        if is_signature_candidate w then
-          extract_witness_sigs (w :: acc) rest
-        else
-          extract_witness_sigs acc rest  (* Skip non-signature items *)
-    in
-
-    let signatures = extract_witness_sigs [] witness_stack in
-=======
-    let signatures = extract_witness_sigs witness_stack in
->>>>>>> d919601fbeee4f3cd7a17a6c32768d0769687a7e
-    if signatures = [] then
-      Error No_signature
-    else begin
-      (* Extract public key from witness stack - last non-empty item often contains it *)
-      let public_key =
-        match List.filter (fun w -> Bytes.length w > 0) (List.rev witness_stack) with
-        | pk :: _ when Bytes.length pk = 33 || Bytes.length pk = 65 -> Some pk
-        | _ -> None
-      in
-      Ok {
-        input_index;
-        signatures;
-        public_key;
-        script_sig = Bytes.empty;  (* script_sig is empty for SegWit *)
-      }
-    end
+    let (signatures_with_indices, der_error) = extract_witness_sigs witness_stack in
+    match der_error with
+    | Some err -> Error (Invalid_der err)
+    | None ->
+      if signatures_with_indices = [] then
+        Error No_signature
+      else begin
+        let signatures = List.map fst signatures_with_indices in
+        let first_witness_idx = snd (List.hd signatures_with_indices) in
+        let public_key = extract_witness_public_key witness_stack in
+        Ok {
+          input_index;
+          signatures;
+          public_key;
+          script_sig = Bytes.empty;
+          witness_index = Some first_witness_idx;
+          script_push_index = [];
+        }
+      end
   end
 
 (* ------------------------------------------------------------------ public API *)
 
-(* [extract tx] extracts signatures from all inputs of a transaction.
-   Returns a list of (input_index, signature_data) pairs or the first error. *)
-let extract (tx : Types.transaction) : (t list, error) result =
-  let rec loop acc inputs input_idx =
-    match inputs with
+let extract (tx : Types.transaction) : (signature_extraction_result list, error) result =
+  let inputs_with_idx = List.mapi (fun i inp -> (i, inp)) tx.inputs in
+  let rec loop (acc : signature_extraction_result list) (pairs : (int * Types.tx_input) list) :
+      (signature_extraction_result list, error) result =
+    match pairs with
     | [] -> Ok (List.rev acc)
-    | inp :: rest ->
-      if tx.segwit then
-        (* SegWit: get witness from tx.witnesses *)
-        let witness_idx = input_idx in
-        let witness_stack =
-          try List.nth tx.witnesses witness_idx with
-          | Failure _ -> []
-        in
-        match extract_segwit input_idx witness_stack inp.previous_output.txid with
-        | Error e as err -> err
-        | Ok sig_data -> loop (sig_data :: acc) rest (input_idx + 1)
-      else begin
-        (* Legacy: parse scriptSig *)
-        match extract_legacy input_idx inp.script_sig with
-        | Error e as err -> err
-        | Ok sig_data -> loop (sig_data :: acc) rest (input_idx + 1)
-      end
+    | (input_idx, inp) :: rest ->
+      let result =
+        if tx.segwit then
+          let witness_stack =
+            match List.nth_opt tx.witnesses input_idx with
+            | Some ws -> ws
+            | None -> []
+          in
+          (* Pass the actual scriptPubKey (empty here since we don't have
+             UTXO data — callers that need BIP143 script_code must supply it
+             separately via extract_single or the analysis layer). *)
+          extract_segwit input_idx witness_stack Bytes.empty
+        else
+          extract_legacy input_idx inp.script_sig
+      in
+      (match result with
+       | Error e -> Error e
+       | Ok sig_data -> loop (sig_data :: acc) rest)
   in
-  loop [] tx.inputs 0
+  loop [] inputs_with_idx
 
-(* [extract_single tx input_index] extracts signatures from a specific input.
-   Returns [Error] if input_index is out of bounds or extraction fails. *)
-let extract_single (tx : Types.transaction) (input_index : int) : (t, error) result =
+let extract_single (tx : Types.transaction) (input_index : int) :
+    (signature_extraction_result, error) result =
   let n_inputs = List.length tx.inputs in
   if input_index < 0 || input_index >= n_inputs then
-    Error No_signature  (* reuse error type *)
+    Error No_signature
   else
     let inp = List.nth tx.inputs input_index in
     if tx.segwit then
-      let witness_idx = input_idx in
       let witness_stack =
-        try List.nth tx.witnesses witness_idx with
-        | Failure _ -> []
+        match List.nth_opt tx.witnesses input_index with
+        | Some ws -> ws
+        | None -> []
       in
-      extract_segwit input_idx witness_stack inp.previous_output.txid
+      extract_segwit input_index witness_stack Bytes.empty
     else
       extract_legacy input_index inp.script_sig

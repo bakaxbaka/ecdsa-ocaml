@@ -1,0 +1,7 @@
+; lib/api is the newest code in the tree and had no tests. These cover the JSON
+; layer (endianness, escaping, no-truncation) and the catalogue generator, which
+; parses the project's own .mli files.
+
+(tests
+ (names test_json test_registry)
+ (libraries api zarith alcotest))

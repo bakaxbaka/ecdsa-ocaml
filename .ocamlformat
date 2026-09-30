@@ -1,0 +1,9 @@
+version = 0.26.1
+profile = default
+break-before-in = false
+doc-comments-padding = 2
+doc-comments-tag-only = true
+margin = 100
+max-indent = 2
+field-space = true
+space-around-collection = true

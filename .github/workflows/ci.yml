@@ -1,0 +1,267 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        ocaml-version: [ '4.14', '5.0', '5.1', '5.2' ]
+        dune-version: [ '3.0', '3.1', '3.2', '3.3' ]
+        exclude:
+          # Reduce matrix size: test fewer combinations
+          - os: macos-latest
+            ocaml-version: '4.14'
+          - os: windows-latest
+            ocaml-version: '5.0'
+          - os: macos-latest
+            dune-version: '3.0'
+          - os: windows-latest
+            dune-version: '3.0'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Setup OCaml ${{ matrix.ocaml-version }}
+      uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: ${{ matrix.ocaml-version }}
+        dune-version: ${{ matrix.dune-version }}
+
+    - name: Install dependencies
+      run: |
+        opam install -y dune zarith digestif alcotest qcheck yojson
+
+    - name: Build project
+      run: |
+        opam exec -- dune build
+
+    - name: Run tests
+      run: |
+        opam exec -- dune runtest
+
+    - name: Check formatting
+      run: |
+        opam exec -- dune build @fmt
+      continue-on-error: true  # Warn but don't fail
+
+    - name: Build documentation
+      run: |
+        opam exec -- dune build @doc
+      continue-on-error: true  # Warn but don't fail
+
+  security-checks:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup OCaml
+      uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: '5.1'
+
+    - name: Install dependencies
+      run: |
+        opam install -y dune zarith digestif alcotest qcheck yojson
+
+    - name: Check for Obj.magic in public API
+      run: |
+        echo "Checking for Obj.magic in lib/**/*.mli..."
+        if grep -r "Obj.magic" lib/ --include="*.mli"; then
+          echo "ERROR: Obj.magic found in public API"
+          exit 1
+        fi
+        echo "✓ No Obj.magic in public API"
+
+    - name: Check for secret material in logs
+      run: |
+        echo "Checking for secret patterns in source files..."
+        if grep -r "private_key\|secret_key\|recovery.*key" lib/ --include="*.ml" --include="*.mli" | grep -v "Recovery_error\|recovery module\|research"; then
+          echo "WARNING: Potential secret material patterns found"
+        fi
+        echo "✓ Secret material check complete"
+
+    - name: Check layering (if script exists)
+      run: |
+        if [ -f tools/check-layering.sh ]; then
+          bash tools/check-layering.sh
+        else
+          echo "⚠ Layering check script not yet implemented (Phase 0, Step 10)"
+        fi
+      continue-on-error: true
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup OCaml
+      uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: '5.1'
+
+    - name: Install dependencies with coverage
+      run: |
+        opam install -y dune zarith digestif alcotest qcheck yojson bisect_ppx
+
+    - name: Build with coverage instrumentation
+      run: |
+        BISECT_INSTRUMENTATION=1 opam exec -- dune build --force
+
+    - name: Run tests with coverage
+      run: |
+        opam exec -- dune runtest
+        opam exec -- bisect-ppx-report -I _build/default html
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./_coverage/index.html
+        fail_ci_if_error: false  # Don't fail on upload issues
+
+    - name: Archive coverage report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: ./_coverage/
+
+  reproducibility:
+    name: Reproducible Build Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup OCaml
+      uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: '5.1'
+
+    - name: Install dependencies
+      run: |
+        opam install -y dune zarith digestif alcotest qcheck yojson
+
+    - name: Clean build (first pass)
+      run: |
+        opam exec -- dune clean
+        opam exec -- dune build --release
+
+    - name: Capture artifacts (first pass)
+      run: |
+        mkdir -p /tmp/build1
+        cp -r _build/default /tmp/build1/
+
+    - name: Clean and rebuild (second pass)
+      run: |
+        opam exec -- dune clean
+        opam exec -- dune build --release
+
+    - name: Capture artifacts (second pass)
+      run: |
+        mkdir -p /tmp/build2
+        cp -r _build/default /tmp/build2/
+
+    - name: Compare builds
+      run: |
+        echo "Comparing reproducible builds..."
+        diff -r /tmp/build1/default /tmp/build2/default || {
+          echo "ERROR: Builds are not reproducible!"
+          exit 1
+        }
+        echo "✓ Builds are reproducible"
+
+  lint:
+    name: Lint and Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup OCaml
+      uses: ocaml/setup-ocaml@v2
+      with:
+        ocaml-compiler: '5.1'
+
+    - name: Install dependencies
+      run: |
+        opam install -y dune zarith digestif alcotest qcheck yojson ocamlfind merlin
+
+    - name: Check formatting with ocamlformat
+      run: |
+        opam exec -- dune build @fmt 2>&1 || {
+          echo "ERROR: Code formatting check failed"
+          echo "Run: dune fmt"
+          exit 1
+        }
+        echo "✓ Code formatting OK"
+
+    - name: Build and check documentation
+      run: |
+        opam exec -- dune build @doc 2>&1 || {
+          echo "WARNING: Documentation build failed (non-blocking)"
+        }
+        echo "✓ Documentation check complete"
+
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "Checking for TODO/FIXME comments (informational)..."
+        grep -r "TODO\|FIXME" lib/ --include="*.ml" --include="*.mli" || echo "No TODOs found"
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [ build-and-test, security-checks, reproducibility ]
+    if: always()
+    steps:
+    - name: Check build status
+      run: |
+        if [ "${{ needs.build-and-test.result }}" == "failure" ] || \
+           [ "${{ needs.security-checks.result }}" == "failure" ] || \
+           [ "${{ needs.reproducibility.result }}" == "failure" ]; then
+          echo "❌ CI FAILED"
+          exit 1
+        fi
+        echo "✅ CI PASSED"
+
+  # Optional: scheduled security scanning
+  security-scan:
+    name: Security Scan (scheduled)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[security]')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run OWASP Dependency-Check (if available)
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'ecdsa-ocaml'
+        path: '.'
+        format: 'JSON'
+        args: >
+          --enableExperimental
+      continue-on-error: true
+
+    - name: Upload OWASP results
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-check-report
+        path: reports/
+      if: always()
+      continue-on-error: true

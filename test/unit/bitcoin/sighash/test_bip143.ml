@@ -22,9 +22,11 @@ let ok_exn lbl = function
 
 let is_error = function Error _ -> true | Ok _ -> false
 
-<<<<<<< HEAD
+let ok_exn_parse lbl = function
+  | Ok v    -> v
+  | Error e ->
+    Alcotest.failf "%s: unexpected Parse error: %s" lbl (Common.Parse_error.to_string e)
 
-=======
 let hex_of_bytes b =
   Bytes.fold_left (fun acc c -> acc ^ Printf.sprintf "%02x" (Char.code c)) "" b
 
@@ -41,7 +43,6 @@ let bytes_of_hex h =
   bytes
 
 (* ------------------------------------------------------------------ helpers *)
->>>>>>> 701a8599c3226f1a1b23d1bd0b989e0f9e20a42c
 
 (* Build a minimal SegWit transaction with n_inputs inputs and n_outputs outputs. *)
 let make_segwit_tx ?(version=1) ?(lock_time=0) n_inputs n_outputs =
@@ -181,11 +182,11 @@ let test_anyonecanpay_extra_inputs_ignored () =
 (* ------------------------------------------------------------------ BIP143 reference vectors *)
 
 let bip143_reference_tx =
-  ok_exn "BIP143 P2SH-P2WSH transaction" (Parser.of_hex
+  ok_exn_parse "BIP143 P2SH-P2WSH transaction" (Tx_parser.of_hex (
     "010000000136641869ca081e70f394c6948e8af409e18b619df2ed74aa106c1ca29787b96e" ^
     "0100000000ffffffff0200e9a435000000001976a914389ffce9cd9ae88dcc0631e88a821" ^
     "ffdbe9bfe2688acc0832f05000000001976a9147480a33f950689af511e6e84c138dbbd3c" ^
-    "3ee41588ac00000000")
+    "3ee41588ac00000000"))
 
 let bip143_reference_script_code =
   bytes_of_hex (

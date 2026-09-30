@@ -1,0 +1,4 @@
+(library
+ (name application)
+ (wrapped false)
+ (libraries common tx_stream))

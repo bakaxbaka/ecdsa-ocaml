@@ -31,7 +31,7 @@ let _z_of_hex h =
 let make_sig_exn r s =
   match Signature.make r s with
   | Ok sig_ -> sig_
-  | Error e -> failwith (Common.Der_error.to_string e)
+  | Error e -> failwith e
 
 (* ------------------------------------------------------------------ Signature.make validation *)
 
@@ -40,9 +40,9 @@ let test_make_valid () =
   let s = Z.of_int 99 in
   match Signature.make r s with
   | Ok sig_ ->
-    Alcotest.(check bool) "r round-trip" true (Z.equal (Signature.r sig_) r);
-    Alcotest.(check bool) "s round-trip" true (Z.equal (Signature.s sig_) s)
-  | Error e -> Alcotest.failf "unexpected error: %s" (Common.Der_error.to_string e)
+    Alcotest.(check bool) "r round-trip" true (Z.equal (Scalar.to_z (Signature.r sig_)) r);
+    Alcotest.(check bool) "s round-trip" true (Z.equal (Scalar.to_z (Signature.s sig_)) s)
+  | Error e -> Alcotest.failf "unexpected error: %s" e
 
 let test_make_zero_r () =
   Alcotest.(check bool) "r=0 rejected" true
@@ -54,13 +54,13 @@ let test_make_zero_s () =
 
 let test_make_negative_r () =
   match Signature.make (Z.neg Z.one) Z.one with
-  | Error Common.Der_error.R_out_of_range -> ()
-  | _ -> Alcotest.fail "expected R_out_of_range"
+  | Error _ -> () (* r < 0 is rejected *)
+  | Ok _ -> Alcotest.fail "expected error for negative r"
 
 let test_make_negative_s () =
   match Signature.make Z.one (Z.neg Z.one) with
-  | Error Common.Der_error.S_out_of_range -> ()
-  | _ -> Alcotest.fail "expected S_out_of_range"
+  | Error _ -> () (* s < 0 is rejected *)
+  | Ok _ -> Alcotest.fail "expected error for negative s"
 
 let test_make_r_equals_n () =
   Alcotest.(check bool) "r=n rejected" true
@@ -90,15 +90,15 @@ let test_of_der_valid () =
   let parsed : Der.parsed = { r; s; sighash = 0x01 } in
   match Signature.of_der parsed with
   | Ok sig_ ->
-    Alcotest.(check bool) "r ok" true (Z.equal (Signature.r sig_) r);
-    Alcotest.(check bool) "s ok" true (Z.equal (Signature.s sig_) s)
-  | Error e -> Alcotest.failf "of_der error: %s" (Common.Der_error.to_string e)
+    Alcotest.(check bool) "r ok" true (Z.equal (Scalar.to_z (Signature.r sig_)) r);
+    Alcotest.(check bool) "s ok" true (Z.equal (Scalar.to_z (Signature.s sig_)) s)
+  | Error e -> Alcotest.failf "of_der error: %s" e
 
 let test_of_der_r_out_of_range () =
   let parsed : Der.parsed = { r = n; s = Z.one; sighash = 0x01 } in
   match Signature.of_der parsed with
-  | Error Common.Der_error.R_out_of_range -> ()
-  | _ -> Alcotest.fail "expected R_out_of_range"
+  | Error _ -> () (* r >= n is rejected *)
+  | Ok _ -> Alcotest.fail "expected error for r >= n"
 
 (* ------------------------------------------------------------------ secp256k1 verify: synthetic vectors *)
 
@@ -152,8 +152,8 @@ let test_verify_wrong_z () =
 let test_verify_wrong_r () =
   let (q, z, sig_) = make_synthetic_vector ~d_int:7 ~k_int:13 ~z_int:12345 in
   (* Flip one bit of r *)
-  let r' = Z.logxor (Signature.r sig_) Z.one in
-  let s  = Signature.s sig_ in
+  let r' = Z.logxor (Scalar.to_z (Signature.r sig_)) Z.one in
+  let s  = Scalar.to_z (Signature.s sig_) in
   (match Signature.make r' s with
    | Error _ -> ()  (* r' might be zero or >= n; either is fine *)
    | Ok bad_sig ->

@@ -1,0 +1,41 @@
+# ecdsa-ocaml opam lock file template
+# Generated: 2026-09-22
+# 
+# This file documents the exact versions used in development and CI.
+# To generate the actual lock file:
+#   opam lock . --locked
+#
+# To use the lock file:
+#   opam install --locked
+
+opam-version: 2.0
+
+packages: [
+  "base-bigarray" {= "base"}
+  "base-unix" {= "base"}
+  "dune" {= "3.1.1"}
+  "ocaml" {= "5.1.1"}
+  "zarith" {= "1.13"}
+  "digestif" {= "1.1.4"}
+  "alcotest" {= "1.7.0"}
+  "qcheck" {= "0.21.2"}
+  "yojson" {= "2.0.2"}
+]
+
+depends: [
+  "ocaml" {= "5.1.1"}
+  "dune" {= "3.1.1"}
+  "zarith" {= "1.13"}
+  "digestif" {= "1.1.4"}
+  "alcotest" {= "1.7.0" & with-test}
+  "qcheck" {= "0.21.2" & with-test}
+  "yojson" {= "2.0.2"}
+]
+
+conflict-class: [
+  "ecdsa-ocaml-dev"
+]
+
+# Platform-specific constraints
+x-ocaml-cross: false
+x-ocaml-version: {>= "4.14" & < "6.0"}

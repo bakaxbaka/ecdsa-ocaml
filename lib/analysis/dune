@@ -1,0 +1,11 @@
+(library
+ (name analysis)
+ (wrapped false)
+ (libraries
+  common
+  bitcoin_tx
+  analysis_signature
+  analysis_nonce
+  analysis_statistics))
+
+(dirs nonce signature statistics types)

@@ -1,67 +1,84 @@
 (** Bitcoin transaction signature extraction.
 
-    Parses transaction inputs to extract ECDSA signatures from scriptSigs.
-    Handles both legacy and SegWit inputs.
+    Parses transaction inputs to extract ECDSA signatures from scriptSigs
+    (legacy inputs) and witness stacks (SegWit inputs).
 
     {1 Extraction workflow}
 
-    For legacy inputs:
+    For legacy inputs (segwit=false or empty witness):
     - Parse scriptSig using {!Script.Parser.of_bytes}
     - Scan every pushed item for strict DER-encoded signatures
     - Parse DER signatures using {!Der.of_bytes}
-    - Extract public key if present (OP_DATA_33/65 followed by 33/65 bytes)
+    - Extract public key if present (33- or 65-byte push)
 
-    For SegWit inputs:
-    - Signatures are in the witness stack (not in scriptSig)
-    - Script code is in the scriptPubKey of the spent output
+    For SegWit inputs (non-empty witness stack):
+    - Signatures are in the witness stack items, not in the scriptSig
+    - Public key is the last non-empty item of length 33 or 65
 
-    {1 Example usage}
+    {1 Malformed candidate policy}
 
-    {[
-      let tx = Transaction.Parser.of_hex "01000000..." in
-      match Signature_extraction.extract tx with
-      | Ok sigs ->
-          List.iter (fun s ->
-            Printf.printf "Input %d: %d signatures\n"
-              s.input_index (List.length s.signatures)
-          ) sigs
-      | Error e -> Printf.eprintf "Error: %s\n" (Signature_extraction.error_to_string e)
-    ]}
+    When a push payload looks like a signature candidate (valid sighash byte,
+    length ≥ 8) but fails strict DER parsing, [Invalid_der] is returned
+    rather than silently skipping it.  This makes parse failures explicit.
 
     {1 Error handling}
 
-    - {e Invalid_script}: Script parsing failed
-    - {e Invalid_der}: DER signature parsing failed
-    - {e No_signature}: Input has no signature
-    - {e No_public_key}: Input has no public key (for P2PKH)
+    - {e Invalid_script}: scriptSig could not be parsed as a Script
+    - {e Invalid_der}: a candidate signature failed strict DER validation
+    - {e No_signature}: the input contains no recognisable signature
+    - {e No_public_key}: the input contains no recognisable public key
 *)
 
-(** Signature extraction result for one transaction input. *)
-type t = {
-  input_index : int;
-  (** Index of the input in the transaction *)
-  signatures  : Z.t * Z.t * int list;
-  (* List of (r, s, sighash) tuples for signatures *)
-  public_key  : bytes option;
-  (** Extracted public key, if present *)
-  script_sig  : bytes;
-  (* Raw scriptSig bytes for debugging/analysis *)
+(** A single parsed DER signature with its sighash byte.
+    [r] and [s] are the raw [Z.t] integers before range-checking against [n].
+    Range validation is performed by {!Signature.make}. *)
+type parsed_sig = {
+  r       : Z.t;
+  s       : Z.t;
+  sighash : int;
 }
 
-(** Error types for signature extraction. *)
+(** Signature extraction result for one transaction input. *)
+type signature_extraction_result = {
+  input_index       : int;
+  (** Index of this input in the transaction. *)
+  signatures        : parsed_sig list;
+  (** All DER-decoded signatures found in this input.
+      Typically one for P2PKH/P2WPKH, more for multisig. *)
+  public_key        : bytes option;
+  (** Extracted public key bytes (33 bytes compressed or 65 bytes
+      uncompressed), if present. [None] for multisig or bare P2PK inputs
+      where the key is in the scriptPubKey, not the scriptSig. *)
+  script_sig        : bytes;
+  (** Raw scriptSig bytes (empty for pure SegWit inputs). *)
+  witness_index     : int option;
+  (** Witness stack index of the first signature, when extracted from
+      the witness.  [None] for legacy inputs. *)
+  script_push_index : int list;
+  (** Script push indices where signatures were found, for legacy inputs.
+      Empty for SegWit inputs. *)
+}
+
+(** Error type for signature extraction failures. *)
 type error =
   | Invalid_script of Common.Parse_error.t
   | Invalid_der    of Common.Der_error.t
   | No_signature
   | No_public_key
 
-(** Convert error to human-readable string. *)
+(** [error_to_string e] returns a human-readable description of [e]. *)
 val error_to_string : error -> string
 
-(** [extract tx] extracts signatures from all inputs of a transaction.
-    Returns [Error] on the first failure or [Ok] with a list of signature data. *)
-val extract : Types.transaction -> (t list, error) result
+(** [extract tx] extracts signatures from all inputs of [tx].
+    Returns [Ok results] where [results] has one entry per input,
+    or [Error] on the first failure encountered. *)
+val extract :
+  Types.transaction ->
+  (signature_extraction_result list, error) result
 
-(** [extract_single tx input_index] extracts signatures from a specific input.
-    Returns [Error] if input_index is out of bounds or extraction fails. *)
-val extract_single : Types.transaction -> int -> (t, error) result
+(** [extract_single tx input_index] extracts signatures from one specific
+    input.  Returns [Error No_signature] if [input_index] is out of bounds. *)
+val extract_single :
+  Types.transaction ->
+  int ->
+  (signature_extraction_result, error) result

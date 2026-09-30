@@ -81,3 +81,44 @@
 
   Rule: if you need a symbol from a layer ABOVE, the design is wrong.
   Move the symbol down.
+
+================================================================================
+                         ENGINEERING REFERENCES
+================================================================================
+
+  The implementation and analysis work follows these primary references:
+
+    ECDSA deterministic nonces
+      RFC 6979
+      https://datatracker.ietf.org/doc/html/rfc6979
+
+    Elliptic-curve encoding and validation
+      SEC 1: Elliptic Curve Cryptography
+      https://www.secg.org/sec1-v2.pdf
+
+    Bitcoin transaction and script serialization
+      Bitcoin Developer Reference: Transactions
+      https://developer.bitcoin.org/reference/transactions.html
+
+    Dune builds, tests, documentation, and CI
+      https://dune.readthedocs.io/en/stable/overview.html
+      https://dune.readthedocs.io/en/stable/tests.html
+
+    OCaml interface-first compilation model
+      OCaml compiler manual, batch compilation
+      https://ocaml.org/manual/5.2/comp.html
+
+  Relevant OCaml implementation patterns include:
+
+    - typed curve witnesses and explicit key/signature validation, as shown by
+      vbmithr/ocaml-uecc's secp256k1 interface;
+    - pure, narrow analysis APIs with recoverable errors represented by Result;
+    - Alcotest and QCheck for deterministic examples, parser properties, and
+      round-trip tests;
+    - Dune libraries that preserve the dependency direction:
+      common -> crypto -> bitcoin -> analysis -> storage -> application.
+
+  These references constrain the next milestones: implement analysis against
+  the existing typed primitives, test transaction-derived claims from source
+  vectors, and do not promote dataset-level findings to library-level
+  guarantees.

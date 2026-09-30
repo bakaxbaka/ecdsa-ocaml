@@ -1,0 +1,6 @@
+(library
+ (name analysis_nonce)
+ (wrapped false)
+ (flags
+  (:standard -w -32-33))
+ (libraries zarith common field scalar curve analysis_signature))

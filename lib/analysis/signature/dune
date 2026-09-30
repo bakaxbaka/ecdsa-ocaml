@@ -1,0 +1,19 @@
+(library
+ (name analysis_signature)
+ (modules sig_analysis observation)
+ (flags
+  (:standard -w -33))
+ (libraries
+  zarith
+  digestif
+  common
+  encoding
+  hash
+  field
+  scalar
+  curve
+  ecdsa_der
+  script_types
+  bitcoin_tx
+  sighash
+  bitcoin))

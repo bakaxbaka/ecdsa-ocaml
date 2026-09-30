@@ -11,6 +11,8 @@
    5. ANYONECANPAY: strips all non-signed inputs.
 *)
 
+open Types
+
 let ok_exn lbl = function
   | Ok v    -> v
   | Error e ->
@@ -23,20 +25,17 @@ let ok_exn lbl = function
 let is_error = function Error _ -> true | Ok _ -> false
 
 let bytes_of_hex h =
-  let n = String.length h / 2 in
-  let b = Bytes.create n in
-  for i = 0 to n - 1 do
-    let hi = Scanf.sscanf (String.sub h (i*2)   1) "%x" Fun.id in
-    let lo = Scanf.sscanf (String.sub h (i*2+1) 1) "%x" Fun.id in
-    Bytes.set b i (Char.chr (hi lsl 4 lor lo))
-  done;
-  b
+  match Hex.to_bytes h with
+  | Ok b -> b
+  | Error e ->
+    let msg = Printf.sprintf "Invalid hex: %s" (Common.Parse_error.to_string e) in
+    failwith msg
 
 (* ------------------------------------------------------------------ synthetic transaction builder *)
 
 (* Build a minimal legacy transaction with n_inputs inputs and n_outputs outputs. *)
 let make_tx ?(version=1) ?(lock_time=0) n_inputs n_outputs =
-  let make_input i : Types.tx_input = {
+  let make_input i : tx_input = {
     previous_output = {
       txid = Bytes.make 32 (Char.chr i);
       vout = i;
@@ -44,12 +43,12 @@ let make_tx ?(version=1) ?(lock_time=0) n_inputs n_outputs =
     script_sig = Bytes.empty;
     sequence   = 0xFFFF_FFFF;
   } in
-  let make_output i : Types.tx_output = {
+  let make_output i : tx_output = {
     value         = Int64.of_int (i * 1000);
     script_pubkey = Bytes.make 5 (Char.chr (0x76 + i));  (* arbitrary *)
   } in
   {
-    Types.version;
+    version;
     inputs    = List.init n_inputs  make_input;
     outputs   = List.init n_outputs make_output;
     witnesses = [];
@@ -119,23 +118,23 @@ let block170_tx () =
                             "b2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3ac"
   in
   let script_pubkey_1 = bytes_of_hex script_pubkey_1_hex in
-  let inp : Types.tx_input = {
+  let inp : tx_input = {
     previous_output = { txid = txid_internal; vout = 0 };
     script_sig = script_sig;
     sequence = 0xFFFF_FFFF;
   } in
   (* Output 0: 10 BTC to Hal Finney *)
-  let out0 : Types.tx_output = {
+  let out0 : tx_output = {
     value = Int64.of_string "1000000000";
     script_pubkey = script_pubkey_0;
   } in
   (* Output 1: 40 BTC change back to Satoshi *)
-  let out1 : Types.tx_output = {
+  let out1 : tx_output = {
     value = Int64.of_string "4000000000";
     script_pubkey = script_pubkey_1;
   } in
   {
-    Types.version   = 1;
+    version   = 1;
     inputs    = [inp];
     outputs   = [out0; out1];
     witnesses = [];
@@ -210,7 +209,7 @@ let test_sighash_none_zeroes_other_sequences () =
   let tx1 = make_tx 2 2 in
   let tx2 = { tx1 with
     inputs = List.mapi (fun i inp ->
-      if i = 1 then { inp with Types.sequence = 0xDEADBEEF }
+      if i = 1 then { inp with sequence = 0xDEADBEEF }
       else inp) tx1.inputs } in
   let sc = Bytes.make 1 '\xac' in
   let h1 = ok_exn "none_seq1" (Legacy.compute tx1 0 sc Legacy.sighash_none) in

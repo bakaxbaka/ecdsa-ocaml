@@ -1,0 +1,11 @@
+(test
+ (name test_nonce_analysis)
+ (flags
+  (:standard -w -32-33))
+ (libraries
+  zarith
+  bitcoin_tx
+  encoding
+  analysis
+  analysis_signature
+  analysis_nonce))

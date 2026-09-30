@@ -1,0 +1,65 @@
+; Every entry point under bin/ gets its own stanza.  Listing them explicitly is
+; what keeps them compiled: with a bare (executable (name main) ...) dune only
+; builds main.ml, so the analyzers in this directory would silently rot.
+;
+; `main` is the REPL entry point: it links lib/application, whose module Repl
+; holds the loop.
+;
+; Two files in this directory are deliberately NOT built, because they are
+; abandoned scratch scripts rather than working tools:
+;
+;   analyze_tx_signatures.ml  calls a Hash256 module that no longer exists,
+;                             and its signature "parsing" is a byte-offset
+;                             walk that prints one message hash as r, s, and z
+;                             with "placeholder" comments.
+;   test_sig_analysis.ml      depends on Sig_analysis.load_csv reading a CSV
+;                             whose path no longer exists in the tree.
+;
+; Reviving either means rewriting it against lib/analysis, not just listing it
+; here.  They are left in place, unbuilt, so the intent is not lost.
+
+(executable
+ (name main)
+ (public_name ecdsa-analyzer)
+ (libraries application))
+
+; The console's compute server.  Separate from `main` (the REPL) because they
+; are different programs with different lifetimes: `main` reads stdin, this
+; listens on a socket.
+
+(executable
+ (name server)
+ (public_name ecdsa-analyzer-server)
+ (libraries unix api))
+
+(executables
+ (names
+  analyse_txs
+  analyze_nonce_attacks
+  compare_txs
+  extract_vectors
+  test_nonce_attacks
+  tx_signature_extractor)
+ (flags
+  (:standard -w -32-33))
+ (libraries
+  zarith
+  str
+  yojson
+  common
+  encoding
+  hash
+  field
+  scalar
+  curve
+  ecdsa_der
+  script_types
+  bitcoin_tx
+  sighash
+  bitcoin
+  analysis
+  analysis_signature
+  analysis_nonce
+  analysis_statistics
+  tx_stream
+  application))

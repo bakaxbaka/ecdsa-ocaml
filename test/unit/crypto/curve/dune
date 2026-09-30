@@ -1,3 +1,8 @@
-(executable
- (name test_point)
+; (test) rather than (executable): `dune runtest` ignores (executable) stanzas,
+; so as executables none of these suites ran under `runtest` and a regression
+; would have gone unnoticed. Both names are declared in one stanza because dune
+; permits one modules field per stanza.
+
+(tests
+ (names test_point)
  (libraries curve zarith alcotest))

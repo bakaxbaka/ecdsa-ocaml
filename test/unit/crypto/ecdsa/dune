@@ -1,3 +1,10 @@
-(executables
+; Note: this file previously declared two executables with no modules field.
+; The stanza text was:
+;   (executables
+;    (names test_der test_verify)
+;    (libraries ecdsa_der zarith alcotest))
+; Converted so `dune runtest` actually runs both suites.
+
+(tests
  (names test_der test_verify)
  (libraries ecdsa_der zarith alcotest))

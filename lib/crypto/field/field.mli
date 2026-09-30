@@ -20,9 +20,9 @@ module T : sig
   val is_zero : t -> bool
   
   val to_hex  : t -> string
+  val of_hex  : string -> (t, string) result
   (** Parses a canonical, non-negative field representative.  Values outside
       [[0, modulus - 1]] are rejected rather than reduced modulo [modulus]. *)
-  val of_hex  : string -> (t, string) result
 end
 
 include module type of T

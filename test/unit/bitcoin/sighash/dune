@@ -1,7 +1,3 @@
-(executable
- (name test_legacy_sighash)
- (libraries sighash bitcoin_tx alcotest))
-
-(executable
- (name test_bip143)
- (libraries sighash bitcoin_tx script_types alcotest))
+(tests
+ (names test_legacy_sighash test_bip143)
+ (libraries sighash bitcoin_tx encoding common alcotest))

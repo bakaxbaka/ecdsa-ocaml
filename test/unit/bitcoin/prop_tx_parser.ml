@@ -54,7 +54,7 @@ let prop_no_exception =
     (make gen_bytes)
     (fun b ->
       (* We test that the call does not raise by catching everything. *)
-      match (try Ok (Parser.of_bytes b) with e -> Error (Printexc.to_string e)) with
+      match (try Ok (Tx_parser.of_bytes b) with e -> Error (Printexc.to_string e)) with
       | Ok (Ok _)    -> true  (* parsed successfully *)
       | Ok (Error _) -> true  (* returned parse error — expected *)
       | Error msg    ->
@@ -68,7 +68,7 @@ let prop_prefix_truncates =
     (make (Gen.int_range 0 (Bytes.length minimal_valid_tx_bytes - 1)))
     (fun prefix_len ->
       let prefix = Bytes.sub minimal_valid_tx_bytes 0 prefix_len in
-      match Parser.of_bytes prefix with
+      match Tx_parser.of_bytes prefix with
       | Error _ -> true
       | Ok _    -> false  (* a strict prefix should never parse successfully *))
 
@@ -79,7 +79,7 @@ let prop_trailing_byte_rejected =
     (fun extra ->
       let extra_b = Bytes.make 1 extra in
       let extended = Bytes.cat minimal_valid_tx_bytes extra_b in
-      match Parser.of_bytes extended with
+      match Tx_parser.of_bytes extended with
       | Error (Common.Parse_error.Trailing_data _) -> true
       | Error _ -> false  (* wrong error variant *)
       | Ok _    -> false  (* trailing byte silently accepted — wrong *))
@@ -106,7 +106,7 @@ let prop_compact_size_single_byte =
       Buffer.add_char b '\x00';                (* scriptPubKey len *)
       Buffer.add_string b "\x00\x00\x00\x00"; (* locktime *)
       let tx_bytes = Bytes.of_string (Buffer.contents b) in
-      match Parser.of_bytes tx_bytes with
+      match Tx_parser.of_bytes tx_bytes with
       | Ok tx ->
         let script_parsed = (List.nth tx.inputs 0).script_sig in
         Bytes.equal script script_parsed

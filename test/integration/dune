@@ -1,0 +1,12 @@
+(test
+ (name test_full_pipeline)
+ (flags
+  (:standard -w -32-33))
+ (libraries
+  zarith
+  bitcoin_tx
+  encoding
+  analysis
+  analysis_signature
+  analysis_nonce
+  analysis_statistics))

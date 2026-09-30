@@ -1,0 +1,22 @@
+(library
+ (name api)
+ (wrapped false)
+ (libraries
+  zarith
+  str
+  common
+  encoding
+  hash
+  field
+  scalar
+  curve
+  ecdsa_der
+  script_types
+  bitcoin_tx
+  sighash
+  bitcoin
+  analysis
+  analysis_signature
+  analysis_nonce
+  analysis_statistics
+  tx_stream))

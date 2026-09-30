@@ -1,3 +1,14 @@
-(executable
+; Converted from (executable) to (test): with (executable), `dune runtest` skips
+; these suites entirely, so they only ever ran when someone launched the binary by
+; hand. That is how test_ripemd160 came to be missing while RIPEMD-160 was broken.
+;
+; (test) makes `dune runtest` build and execute them, and a non-zero exit fails
+; the run.
+
+(test
  (name test_hash)
+ (libraries hash alcotest))
+
+(test
+ (name test_ripemd160)
  (libraries hash alcotest))
