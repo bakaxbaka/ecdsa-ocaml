@@ -1,0 +1,373 @@
+{
+ "sections": {
+  "bigint_modular": {
+   "modexp py==gmpy2": {
+    "status": "PASS",
+    "detail": "312d3be3dbbb1e652483dc76a1e03bab53a6abc8"
+   },
+   "modexp py==pari": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "mulmod py==gmpy2==pari": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "2048bit modexp py==gmpy2": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust modexp==python": {
+    "status": "PASS",
+    "detail": "6bd719fc9641765db01a1a81ac2693f0"
+   },
+   "rust modinv==python": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust gcd==python": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust mulmod==python": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "gcd_inverse": {
+   "gcd py==gmpy2==pari (20 pairs)": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "inverse py==gmpy2==pari + a*inv==1": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "gmpy2 gcdext Bezout identity": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "finite_fields": {
+   "sqrt mod p on residues (py pow vs pari sqrt) 10x": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "pari znlog small field consistent": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "Fermat a^(p-1)==1 mod p (5x)": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "sympy GF(2) AES-poly irreducible": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "polynomials": {
+   "sympy expand == pari leading coeff": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "all coefficients match": {
+    "status": "PASS",
+    "detail": "[1, 2, 2, 3, 7, 15]"
+   },
+   "poly gcd sympy==pari (coefficients)": {
+    "status": "PASS",
+    "detail": "[1, 0, -1] vs [1, 0, -1]"
+   },
+   "numpy conv == exact": {
+    "status": "PASS",
+    "detail": "[5, 9, 13, 24, 10, 21, 28]"
+   },
+   "factor(2^127-1) sympy==pari": {
+    "status": "PASS",
+    "detail": "{170141183460469231731687303715884105727: 1}"
+   }
+  },
+  "elliptic_curves": {
+   "n*G == infinity (btclib)": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "k*G on-curve + btclib==pari (5 random k)": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "point addition commutative": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "double==self-add": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "sha_hmac": {
+   "SHA-256 NIST vectors: hashlib==pycryptodome==OpenSSL": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "HMAC-SHA256 RFC4231#1 x3 impls": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust sha256(abc)==NIST": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust hmac RFC4231#1": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust dsha256(hello)==python": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "random 10KB hashlib==pycryptodome": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "aes": {
+   "AES-128 FIPS-197 vector pycryptodome==OpenSSL": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust aes crate == vector": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "AES-128-CBC 4KB roundtrip + cross-impl ciphertext equal": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "ecdsa": {
+   "btclib sign -> btclib verify": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "btclib sign -> OpenSSL verify": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "OpenSSL sign -> btclib verify": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "wrong z rejected": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "20 real target sigs re-verified (pure python)": {
+    "status": "PASS",
+    "detail": "20/20"
+   },
+   "rust k256 verifies BIP143 vector": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust k256 (n-1)G == -G order check": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "rng": {
+   "os.urandom 1MB chi2 in [150, 380]": {
+    "status": "PASS",
+    "detail": "chi2=253.3"
+   },
+   "os.urandom 1MB all 256 byte values seen": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "python random seeded reproducible": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "numpy default_rng seeded reproducible": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "secrets.token_bytes distinct": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "serialization": {
+   "300 real txs parse+reserialize byte-identical & txid match": {
+    "status": "PASS",
+    "detail": "300/300"
+   },
+   "DER encode/parse roundtrip all target sigs": {
+    "status": "PASS",
+    "detail": "874/874"
+   },
+   "JSON roundtrip transactions.jsonl first line": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rust bincode roundtrip": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "octave": {
+   "octave exit 0": {
+    "status": "PASS",
+    "detail": "OpenBLAS WARNING - could not determine the L2 cache size on this system, assuming 256k\nerror: ignoring const execution_exception& while preparing to exit\n"
+   },
+   "matmul500 sum == numpy": {
+    "status": "PASS",
+    "detail": "4.1666541667e+07 vs 4.1666541667e+07"
+   },
+   "matmul500 C(1,1) == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "matmul500 C(250,250) == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "matmul500 trace == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "fft65536 max|y| == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "fft65536 sum real head == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "fft65536 |y[1]| == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "poly conv == numpy exact": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "polyval == numpy exact": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "linear solve sum == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "eig sum == trace": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "eig max == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "svd s1 == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "svd s4 == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "rank == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "det == numpy": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "function-file fib(20)==6765": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "roots sum == 6": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "roots prod == 6": {
+    "status": "PASS",
+    "detail": ""
+   }
+  },
+  "cross_language": {
+   "rust selftest ALL_PASS": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "python==pari==gmpy2 numeric agreement (see bigint/gcd sections)": {
+    "status": "PASS",
+    "detail": ""
+   },
+   "python==octave numeric agreement (see octave section)": {
+    "status": "PASS",
+    "detail": ""
+   }
+  }
+ },
+ "octave_raw": {
+  "octave_version": "7.3.0",
+  "matmul500_s": "0.004069",
+  "matmul500_sum": "4.1666541667e+07",
+  "matmul500_c11": "1.6616766666e+02",
+  "matmul500_c250_250": "1.6666516668e+02",
+  "matmul500_trace": "8.3333166667e+04",
+  "fft65536_s": "0.006384",
+  "fft_maxabs": "2.5826476884e+04",
+  "fft_sum_real_head": "2.1667019540e+02",
+  "fft_abs_y2": "2.7082835772e+01",
+  "poly_conv": "5 9 13 24 10 21 28 ",
+  "poly_roots_sum": "6.0000000000e+00",
+  "poly_roots_prod": "6.0000000000e+00",
+  "polyval_3": "58",
+  "solve_sum": "1.0594594595e+00",
+  "eig_sum": "2.2000000000e+01",
+  "eig_max": "8.7912878475e+00",
+  "svd_s1": "8.7912878475e+00",
+  "svd_s4": "2.2087121525e+00",
+  "rank": "4",
+  "inv_trace": "9.5135135135e-01",
+  "det": "5.5500000000e+02",
+  "fib20": "6765",
+  "openblas_threads_env": "",
+  "matmul256_s": "0.001007",
+  "matmul256_gflops": "33.326",
+  "matmul512_s": "0.003493",
+  "matmul512_gflops": "76.848",
+  "matmul1024_s": "0.020736",
+  "matmul1024_gflops": "103.563",
+  "fft1M_s": "0.093703",
+  "octave_done": "1"
+ },
+ "rust_raw": {
+  "sha256_abc": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "sha256_empty": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sha256_448bit": "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+  "hmac_rfc4231_1": "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
+  "dsha256_hello": "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50",
+  "aes128_fips197": "69c4e0d86a7b0430d8cdb78070b4c55a",
+  "modexp_7_e_p": "6bd719fc9641765db01a1a81ac2693f0fbc899f2b651210a3a8ebab4cfefc58",
+  "modinv_a_p": "f37164d6ff61ed527289824f2aac8343ca55b3c9eeabe44cd6379acbc0ba895d",
+  "gcd_x_y": "3",
+  "mulmod_x_y_p": "d0cabda05d6f6b16c65cbf258ef58d1d570019f7ef9f011c2c367c184780dc4e",
+  "k256_bip143_verify": "OK",
+  "k256_order_check": "OK",
+  "bincode_roundtrip": "OK len=126",
+  "selftest": "ALL_PASS",
+  "_exit": 0
+ },
+ "runtime_s": 1.9,
+ "summary": {
+  "pass": 72,
+  "fail": 0,
+  "total": 72
+ }
+}

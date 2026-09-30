@@ -1,0 +1,47 @@
+{
+  "tx_count": 5078,
+  "raw_count": 5078,
+  "parsed": 5078,
+  "parse_fail": 0,
+  "roundtrip_fail": 0,
+  "txid_fail": 0,
+  "wtxid_fail": 0,
+  "size_fail": 0,
+  "weight_fail": 0,
+  "blockstream_hex_checked": 279,
+  "blockstream_hex_mismatch": 0,
+  "stats": {
+    "inputs": 10685,
+    "coinbase": 0,
+    "sigs": 20449,
+    "target_sigs": 874,
+    "schnorr": 0,
+    "anon": 0,
+    "der_nonstrict": 0,
+    "high_s": 0,
+    "z_mismatch_impl": 0,
+    "verify_openssl_ok": 20449,
+    "verify_openssl_fail": 0,
+    "verify_pure_ok": 1864,
+    "verify_pure_fail": 0,
+    "preimage_saved": 874,
+    "target_prevout_raw_checked": 874,
+    "target_prevout_raw_mismatch": 0,
+    "shtypes": {
+      "1": 20449
+    },
+    "prevout_types": {
+      "p2sh": 9764,
+      "p2wpkh": 23,
+      "p2pkh": 898
+    },
+    "target_pubkeys": {
+      "03507a40492642239fc7eae74bc1f1beb15a6079ea3702cfdaeec2268bb00bcbd0": 874
+    },
+    "json_prevout_mismatch": 0
+  },
+  "parse_failures": [],
+  "roundtrip_fail_txids": [],
+  "txid_fail_txids": [],
+  "runtime_s": 50.2
+}

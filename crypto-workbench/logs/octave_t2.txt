@@ -1,0 +1,7 @@
+RESULT matmul256_s 0.014942
+RESULT matmul256_gflops 2.246
+RESULT matmul512_s 0.003957
+RESULT matmul512_gflops 67.838
+RESULT matmul1024_s 0.098311
+RESULT matmul1024_gflops 21.844
+RESULT fft1M_s 0.100124

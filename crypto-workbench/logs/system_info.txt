@@ -1,0 +1,9 @@
+== SYSTEM INFO ==
+Linux c-6ab5de90-01ed1602-8ac2a4611c77 4.19.91-c8dfc93.al7.x86_64 #1 SMP Tue Sep 26 10:25:51 UTC 2023 x86_64 GNU/Linux
+Debian GNU/Linux 12 (bookworm)
+CPUs: 2
+model name	: Intel(R) Xeon(R) Processor @ 2.50GHz
+aes avx avx2 sse4_2 
+MemTotal:        1083460 kB
+SwapTotal:             0 kB
+OpenSSL 3.0.20 7 Apr 2026 (Library: OpenSSL 3.0.20 7 Apr 2026)

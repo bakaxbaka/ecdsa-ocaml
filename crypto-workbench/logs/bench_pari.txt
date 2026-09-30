@@ -1,0 +1,13 @@
+RESULT pari_modexp256_us_per_op 19.5000
+RESULT pari_modexp256_ops_s 51282.1
+RESULT pari_modinv_ops_s 2.50000 e6
+RESULT pari_gcd256_ops_s 1.90476 e6
+RESULT pari_isprime256_us_per_op 5.00000
+RESULT pari_factor2_127m1_ops_s 13333.3
+RESULT pari_znlog_p1e6_us_per_op 60.0000
+RESULT pari_ec_scalarmult_ops_s 3960.40
+RESULT pari_polymul_deg100_ops_s 1.09890 e5
+RESULT pari_polygcd_deg101_ops_s 20000.0
+RESULT pari_mul4096bit_ops_s 4.00000 e5
+RESULT pari_fact50000_ms_per_op 5.00000
+RESULT pari_bench_done 1

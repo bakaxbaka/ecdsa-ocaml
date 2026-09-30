@@ -1,0 +1,12 @@
+RESULT bigint_modmul_ops_per_s 2678448
+RESULT bigint_modexp_e65537_ops_per_s 109024
+RESULT bigint_modinv_ops_per_s 103720
+RESULT bigint_gcd_ops_per_s 201062
+RESULT sha256_MB_per_s 238.7
+RESULT aes128_MB_per_s 403.6
+RESULT k256_ecdsa_verify_per_s 9590
+RESULT k256_ecdsa_sign_per_s 16858
+RESULT k256_scalarmult_per_s 15442
+RESULT serde_bincode_roundtrip_per_s 4978505
+RESULT sha256_par1_MB_per_s 228.5
+RESULT sha256_par2_MB_per_s 226.2

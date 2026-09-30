@@ -1,0 +1,4 @@
+RESULT matmul2048_min_s 0.234643
+RESULT matmul2048_gflops 73.217
+RESULT threads_env 2
+RESULT fft4M_min_s 0.115021

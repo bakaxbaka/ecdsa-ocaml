@@ -1,0 +1,19 @@
+== TOOL VERSIONS 2026-09-25T02:54:52Z ==
+rustc 1.98.1 (48a229cea 2026-09-01)
+cargo 1.98.1 (797e8a9bc 2026-08-05)
+Debian clang version 14.0.6
+gcc (Debian 12.2.0-14+deb12u1) 12.2.0
+g++ (Debian 12.2.0-14+deb12u1) 12.2.0
+cmake version 3.25.1
+git version 2.39.5
+GNU Make 4.3
+1.8.1
+octave: X11 DISPLAY environment variable not set
+octave: disabling GUI features
+OpenBLAS WARNING - could not determine the L2 cache size on this system, assuming 256k
+GNU Octave, version 7.3.0
+                  GP/PARI CALCULATOR Version 2.15.2 (released)
+          amd64 running linux (x86-64/GMP-6.2.1 kernel) 64-bit version
+Python 3.11.2
+pip 26.2.1 from /opt/arena-python/lib/python3.11/site-packages/pip (python 3.11)
+curl 7.88.1 (x86_64-pc-linux-gnu) libcurl/7.88.1 OpenSSL/3.0.20 zlib/1.2.13 brotli/1.0.9 zstd/1.5.4 libidn2/2.3.3 libpsl/0.21.2 (+libidn2/2.3.3) libssh2/1.10.0 nghttp2/1.52.0 librtmp/2.3 OpenLDAP/2.5.13

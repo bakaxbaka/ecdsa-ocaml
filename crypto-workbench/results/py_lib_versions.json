@@ -1,0 +1,13 @@
+{
+ "numpy": "2.4.6",
+ "scipy": "1.17.1",
+ "sympy": "1.14.0",
+ "matplotlib": "3.11.2",
+ "pandas": "3.0.6",
+ "gmpy2": "2.3.1",
+ "cryptography": "50.0.1",
+ "pycryptodome": "3.23.0",
+ "requests": "2.34.2",
+ "cypari2(apt python3-cypari2)": "2.1.2",
+ "libpari(apt)": "2.15.2"
+}
