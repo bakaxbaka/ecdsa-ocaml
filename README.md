@@ -1,6 +1,6 @@
-================================================================================
+
                               ecdsa-ocaml
-================================================================================
+
 
   A typed OCaml implementation of ECDSA signature analysis and private key
   recovery on secp256k1, targeting Bitcoin transaction data.
@@ -11,9 +11,9 @@
 
   The math is unchanged. The guarantees around it are new.
 
-================================================================================
+
                                 STATUS
-================================================================================
+
 
   Honest. Not aspirational.
 
@@ -40,9 +40,9 @@
     CLI                                  none yet
     git history                          minimal
 
-================================================================================
+
                                 BUILD
-================================================================================
+
 
   Requires opam, OCaml 4.14 or later, and Dune.
 
@@ -60,9 +60,9 @@
 
     opam exec -- dune runtest
 
-================================================================================
+
                               ARCHITECTURE
-================================================================================
+
 
   Six layers. Each is a separate Dune library. A layer may depend only on
   layers below it. Dune enforces this via each layer's (libraries ...) clause.
@@ -82,7 +82,6 @@
   Rule: if you need a symbol from a layer ABOVE, the design is wrong.
   Move the symbol down.
 
-================================================================================
                          ENGINEERING REFERENCES
 
   The implementation and analysis work follows these primary references:
@@ -123,7 +122,7 @@
   guarantees.
 =======
                          SIGNATURE ANALYSIS PIPELINE
-================================================================================
+
 
 `tools/dump_rsz.exe RAWTX_DIR rsz_database.csv` indexes the `*.hex` files in
 `RAWTX_DIR`, then emits one CSV row per structurally valid DER signature.  The
