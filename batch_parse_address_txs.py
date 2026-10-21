@@ -23,30 +23,56 @@ def parse_all_transactions(input_json):
     
     # Load JSON
     with open(input_json, 'r') as f:
-        txs = json.load(f)
+        data = json.load(f)
     
-    print(f"Loaded {len(txs)} transactions from {input_json}")
+    # Check if this is the correct format (array of transactions with raw_hex)
+    if isinstance(data, dict):
+        print("Error: JSON file format not supported")
+        print("This file appears to be a summary format (e.g., from blockchain.info), not a raw transaction hex format.")
+        print()
+        print("To fix this:")
+        print("1. Use fetch_address_inputs.bat to fetch transactions with raw hex")
+        print("   Example: fetch_address_inputs.bat <your_address>")
+        print()
+        print("2. Or, if you have tx_hash values, convert them to raw hex first")
+        print("   The required format is an array of objects with 'txid' and 'raw_hex' fields.")
+        print()
+        print("Expected format:")
+        print('  [')
+        print('    {')
+        print('      "txid": "...",')
+        print('      "raw_hex": "01000000...",')
+        print('      ...')
+        print('    }')
+        print('  ]')
+        return []
+    
+    if not isinstance(data, list):
+        print("Error: JSON must be an array of transactions")
+        return []
+    
+    print(f"Loaded {len(data)} transactions from {input_json}")
     
     results = []
     
-    for i, tx_data in enumerate(txs, 1):
+    for i, tx_data in enumerate(data, 1):
         # Check if tx_data has required fields
         if not isinstance(tx_data, dict):
-            print(f"\n[{i}/{len(txs)}] Skipping: invalid transaction data (not a dict)")
+            print(f"\n[{i}/{len(data)}] Skipping: invalid transaction data (not a dict)")
             continue
         
         if 'txid' not in tx_data:
-            print(f"\n[{i}/{len(txs)}] Skipping: missing txid field")
+            print(f"\n[{i}/{len(data)}] Skipping: missing txid field")
             continue
         
         if 'raw_hex' not in tx_data:
-            print(f"\n[{i}/{len(txs)}] Skipping: missing raw_hex field")
+            print(f"\n[{i}/{len(data)}] Skipping: missing raw_hex field")
             continue
         
         txid = tx_data['txid']
         raw_hex = tx_data['raw_hex']
         
-        print(f"\n[{i}/{len(txs)}] Parsing transaction: {txid}")
+        print(f"\n[{i}/{len(data)}] Parsing transaction: {txid}")
         
         try:
             # Parse the transaction
