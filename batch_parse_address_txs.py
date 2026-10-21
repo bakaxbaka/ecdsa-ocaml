@@ -30,6 +30,19 @@ def parse_all_transactions(input_json):
     results = []
     
     for i, tx_data in enumerate(txs, 1):
+        # Check if tx_data has required fields
+        if not isinstance(tx_data, dict):
+            print(f"\n[{i}/{len(txs)}] Skipping: invalid transaction data (not a dict)")
+            continue
+        
+        if 'txid' not in tx_data:
+            print(f"\n[{i}/{len(txs)}] Skipping: missing txid field")
+            continue
+        
+        if 'raw_hex' not in tx_data:
+            print(f"\n[{i}/{len(txs)}] Skipping: missing raw_hex field")
+            continue
+        
         txid = tx_data['txid']
         raw_hex = tx_data['raw_hex']
         
